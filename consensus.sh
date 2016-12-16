@@ -2,8 +2,8 @@
 
 ##Analysis of grubii variant.
 ref=/mithril/Data/NGS/Reference/cneo/grubii/grubii.fa
-aligned=/atium/Data/NGS/Aligned/160921_SSSSS_Crypt/grubii/downsample50X/align/
-destdir=/atium/Data/NGS/Aligned/160921_SSSSS_Crypt/grubii/downsample50X/mpileup/
+aligned=/atium/Data/NGS/Aligned/160921_SSSSS_Crypt/grubii/downsample30X/align/
+destdir=/atium/Data/NGS/Aligned/160921_SSSSS_Crypt/grubii/downsample30X/mpileup/
 
 
 if [ 1 -eq 0 ]; then
