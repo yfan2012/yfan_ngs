@@ -18,7 +18,7 @@ read_fast5_basecaller.py -i $rawtmp -t 10 -s $rawdir/${samp}_called/ -c FLO-MIN1
     
 tar --remove-files -cf $rawdir/${samp}_called.tar $rawdir/${samp}_called &&
 
-pigz --best ${samp}_called.tar
+pigz --best $rawdir/${samp}_called.tar
 
 
 
