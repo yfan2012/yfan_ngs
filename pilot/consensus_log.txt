@@ -1,0 +1,18 @@
+Note: Neither --ploidy nor --ploidy-file given, assuming all sites are diploid
+Note: Neither --ploidy nor --ploidy-file given, assuming all sites are diploid
+Note: Neither --ploidy nor --ploidy-file given, assuming all sites are diploid
+Note: Neither --ploidy nor --ploidy-file given, assuming all sites are diploid
+Note: Neither --ploidy nor --ploidy-file given, assuming all sites are diploid
+Note: Neither --ploidy nor --ploidy-file given, assuming all sites are diploid
+[mpileup] 1 samples in 1 input files
+[mpileup] 1 samples in 1 input files
+[mpileup] 1 samples in 1 input files
+[mpileup] 1 samples in 1 input files
+[mpileup] 1 samples in 1 input files
+[mpileup] 1 samples in 1 input files
+<mpileup> Set max per-file depth to 8000
+<mpileup> Set max per-file depth to 8000
+<mpileup> Set max per-file depth to 8000
+<mpileup> Set max per-file depth to 8000
+<mpileup> Set max per-file depth to 8000
+<mpileup> Set max per-file depth to 8000

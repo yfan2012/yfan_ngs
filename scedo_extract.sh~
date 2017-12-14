@@ -1,0 +1,7 @@
+#!/bin/bash
+
+rawdir=/atium/Data/Nanopore/oxford/170412_scedo_hyphae
+dir=/atium/Data/Nanopore/Analysis/170412_scedo_hyphae
+
+mkdir -p $dir
+
