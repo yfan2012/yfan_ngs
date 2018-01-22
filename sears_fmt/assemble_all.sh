@@ -16,5 +16,3 @@ do
     spades.py -1 $fastqdir/${prefix}_L001_R1_001.fastq.gz -2 $fastqdir/${prefix}_L001_R2_001.fastq.gz -t 70 -m 300 -o $datadir/assemble/$prefix
     
 done
-
-
