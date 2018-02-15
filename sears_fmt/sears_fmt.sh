@@ -34,7 +34,7 @@ do
     ##this is helpful for debugging. If you find problems with lines of code after this one, you can re-run the whole script, and it will automatically skip this step if it worked the first time. 
 
     if [ ! -f $datadir/$prefix.sorted.bam ] ; then
-	##Run bowtie2, which gives you a sam file. Pipe that samfile to 'samtools view' to convert it to a bam (which is a conpressed sam), and send that bam to 'samtools sort.' 
+	##Run bowtie2, which gives you a sam file. Pipe (the '|' symbol) that sam file to 'samtools view' to convert it to a bam (which is a conpressed sam), and pipe  that bam to 'samtools sort.' 
 	bowtie2 -p 12 -x $refpre -1 $rawdir/${prefix}_L001_R1_001.fastq.gz -2 $rawdir/${prefix}_L001_R2_001.fastq.gz | samtools view -bS | samtools sort -o $datadir/$prefix.sorted.bam
 	samtools index $datadir/$prefix.sorted.bam
     fi
@@ -42,8 +42,15 @@ do
 
     ##Call variants
     if [ ! -f $datadir/mpileup_grubii/$prefix.cons.fq ] ; then
+	##samtools mpileup: look at alignment and figure out coverage, overlaps, etc
+	##bcftools call: based on mpileup info, make a decision about which positions are different between the sample reads and the reference genome
+	##vcfutils.pl vcf2fq: convert vcf output of bcftools into fastq format
 	samtools mpileup -uf $ref $datadir/$prefix.sorted.bam | bcftools call -c - | vcfutils.pl vcf2fq > $datadir/$prefix.cons.fq
+
+	##filter based on coverage depth of 100
 	samtools mpileup -uf $ref $datadir/$prefix.sorted.bam | bcftools call -c - | vcfutils.pl varFilter -D100 > $datadir/$prefix.vcf
+
+	##convert fastq to fasta
 	seqtk seq -a $datadir/$prefix.cons.fq > $datadir/$prefix.fasta
     fi
     
