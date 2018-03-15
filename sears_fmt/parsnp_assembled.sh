@@ -5,7 +5,7 @@ assembledir=$datadir/assemblies
 ref=/mithril/Data/NGS/Reference/ecoli/ecoli.fasta
 
 
-outdir=~/Dropbox/Lab/sears_fmt/parsnp_assembly
+outdir=~/Dropbox/yfan/sears_fmt/parsnp_assembly
 mkdir -p $outdir
 
 if [ $1 == ecoli ] ; then
@@ -60,6 +60,14 @@ fi
        
 
 
+if [ $1 == all ] ; then
+    #try parsnp for all bacteria
+    outdir=~/Dropbox/yfan/sears_fmt/parsnp_all
+    alldir=$datadir/assemblies/all
+    mkdir -p outdir
+    
+    parsnp -r $alldir/ecoli_NC101.fa -d $alldir -p 12 -o $outdir -c
+fi
 
 
 
