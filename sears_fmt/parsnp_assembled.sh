@@ -70,7 +70,14 @@ if [ $1 == all ] ; then
 fi
 
 
-
+if [ $1 == withref ] ; then
+	outdir=~/Dropbox/yfan/sears_fmt/parsnp_ecoli
+	gendir=$datadir/assemblies/ecoli/all
+	mkdir -p $outdir
+	parsnp -r $gendir/ecoli_NC101.fa -d $gendir -p 12 -o $outdir -c
+	harvesttools -i $outdir/parsnp.ggr -V $outdir/ecoli.vcf
+	
+fi
 
 
 
