@@ -5,13 +5,14 @@ import os
 
 parser=argparse.ArgumentParser(description='change apl code to sample name')
 parser.add_argument('--indir', '-i', type=str, required=True, help='full path to dir with fastas in it')
-parser.add_argument('--ext', '-e', type=str, required=True, help='extension to replace, including the '.' (like .fasta)')
+parser.add_argument('--ext', '-e', type=str, required=True, help='extension to replace, including the . (like .fasta)')
+parser.add_argument('--key', '-k', type=str, required=True, help='full path to sample_key.csv')
 args=parser.parse_args()
 
 
 
 ##read in the sample key into a dictionary
-keyfile='/home/yfan/Dropbox/yfan/fungus_zhang/fungus_76/sample_key.csv'
+keyfile=args.key
 with open(keyfile, 'r') as f:
     content=f.readlines()
 
