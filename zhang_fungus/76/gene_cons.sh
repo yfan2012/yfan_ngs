@@ -45,6 +45,17 @@ if [ $1 == align ] ; then
     for i in $datadir/fastqs/*R1.fastq.gz ;
     do
 	prefix=`basename $i _R1.fastq.gz`
-	sbatch --output=$datadir/batch_logs/$prefix.align.out --job-name=$prefix $srcdir/align_consensus.scr $i
+	sbatch --output=$datadir/batch_logs/$prefix.align.out --job-name=$prefix $srcdir/align_consensus_parallel.scr $i
     done
 fi
+
+
+if [ $1 == bigmem_realign ] ; then
+    for i in $datadir/fastqs/*R1.fastq.gz ;
+    do
+	prefix=`basename $i _R1.fastq.gz`
+	bash $srcdir/align_consensus.scr $i &> $datadir/batch_logs/$prefix.bigmem.out
+    done
+fi
+
+
