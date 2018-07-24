@@ -48,3 +48,11 @@ if [ $1 == align ] ; then
 	sbatch --output=$datadir/batch_logs/$prefix.align.out --job-name=$prefix $srcdir/align_consensus.scr $i
     done
 fi
+
+if [ $1 == species ] ; then
+    sed -i -e 's/deneo x neo/cneo/g' ~/Dropbox/yfan/fungus_zhang/fungus_76/mlst/species_key_short.csv
+    sed -i -e 's/deneoformans/cneo/g' ~/Dropbox/yfan/fungus_zhang/fungus_76/mlst/species_key_short.csv
+    sed -i -e 's/neoformans/cneo/g' ~/Dropbox/yfan/fungus_zhang/fungus_76/mlst/species_key_short.csv
+    sed -i -e 's/var grubii/cneo/g' ~/Dropbox/yfan/fungus_zhang/fungus_76/mlst/species_key_short.csv
+    sed -i -e 's/deuterogattii/gattii/g' ~/Dropbox/yfan/fungus_zhang/fungus_76/mlst/species_key_short.csv
+fi
