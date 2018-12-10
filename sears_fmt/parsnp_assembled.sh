@@ -8,6 +8,14 @@ ref=/mithril/Data/NGS/Reference/ecoli/ecoli.fasta
 outdir=~/Dropbox/yfan/sears_fmt/parsnp_assembly
 mkdir -p $outdir
 
+if [ $1 == kleb ] ; then
+    assembledir=~/Dropbox/yfan/sears_fmt/assemblies_kleb
+    parsdir=~/Dropbox/yfan/sears_fmt/parsnp_kleb
+    parsnp -r $assembledir/1*.spades.fasta -d $assembledir -p 12 -o $parsdir -c
+    harvesttools -i $parsdir/parsnp.ggr -V $parsdir/kleb.vcf
+fi
+
+
 if [ $1 == newruns ] ; then
     assembledir=~/Dropbox/yfan/sears_fmt/assemblies_ecoli
     parsdir=~/Dropbox/yfan/sears_fmt/parsnp_ecoli_new
