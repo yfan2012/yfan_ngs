@@ -1,8 +1,16 @@
 #!/bin/bash -l
 
+<<<<<<< HEAD
+#SBATCH --time=3:00:00
+#SBATCH --partition=shared
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=12
+#SBATCH --ntasks-per-node=1
+=======
 #SBATCH --time=6:00:00
 #SBATCH --partition=shared
 #SBATCH --nodes=1
+>>>>>>> 45b7be7ec081851ee27b2931d83d7bfbe076f3f4
 
 
 ##i is read1 fq
@@ -15,6 +23,8 @@ ml bcftools
 mkdir -p $datadir/align/$prefix
 mkdir -p $datadir/cons/$prefix
 
+<<<<<<< HEAD
+=======
 ##for i in $datadir/align/$prefix/*tmp* ;
 ##do
 ##    halfalign=`echo $i | rev | cut -d . -f6- | rev`
@@ -22,11 +32,19 @@ mkdir -p $datadir/cons/$prefix
 ##    rm -v  $datadir/align/$prefix/${prealign}* 
 ##done
 
+>>>>>>> 45b7be7ec081851ee27b2931d83d7bfbe076f3f4
 
 ##align for all genes
 for i in $datadir/Reference/ref_alleles/*fasta ; 
 do
     gene=`basename $i .fasta`
+<<<<<<< HEAD
+    bowtie2 -p 12 -x $datadir/Reference/ref_alleles/$gene -1 $1 -2 $datadir/fastqs/${prefix}_R2.fastq.gz | samtools view -bS | samtools sort -o $datadir/align/$prefix/$prefix.$gene.sorted.bam
+    samtools index $datadir/align/$prefix/$prefix.$gene.sorted.bam
+
+    samtools mpileup -uf $i $datadir/align/$prefix/$prefix.$gene.sorted.bam | bcftools call -c - | vcfutils.pl vcf2fq > $datadir/cons/$prefix/$prefix.$gene.cons.fq
+    seqtk seq -a $datadir/cons/$prefix/$prefix.$gene.cons.fq > $datadir/cons/$prefix/$prefix.$gene.fasta
+=======
     if [ ! -f $datadir/align/$prefix/$prefix.$gene.sorted.bam ] ; then
 	##NOTE THREADS SET TO 2 to run on bigmem in parallel. Switch it back to 12 or 24 if batching or whatever.
 	bowtie2 -p 24 -x $datadir/Reference/ref_alleles/$gene -1 $1 -2 $datadir/fastqs/${prefix}_R2.fastq.gz | samtools view -bS | samtools sort -o $datadir/align/$prefix/$prefix.$gene.sorted.bam
@@ -35,5 +53,6 @@ do
 	samtools mpileup -uf $i $datadir/align/$prefix/$prefix.$gene.sorted.bam | bcftools call -c - | vcfutils.pl vcf2fq > $datadir/cons/$prefix/$prefix.$gene.cons.fq
 	seqtk seq -a $datadir/cons/$prefix/$prefix.$gene.cons.fq > $datadir/cons/$prefix/$prefix.$gene.fasta
     fi
+>>>>>>> 45b7be7ec081851ee27b2931d83d7bfbe076f3f4
 done
     

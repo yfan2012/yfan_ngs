@@ -49,6 +49,15 @@ if [ $1 == align ] ; then
     done
 fi
 
+<<<<<<< HEAD
+if [ $1 == species ] ; then
+    sed -i -e 's/deneo x neo/cneo/g' ~/Dropbox/yfan/fungus_zhang/fungus_76/mlst/species_key_short.csv
+    sed -i -e 's/deneoformans/cneo/g' ~/Dropbox/yfan/fungus_zhang/fungus_76/mlst/species_key_short.csv
+    sed -i -e 's/neoformans/cneo/g' ~/Dropbox/yfan/fungus_zhang/fungus_76/mlst/species_key_short.csv
+    sed -i -e 's/var grubii/cneo/g' ~/Dropbox/yfan/fungus_zhang/fungus_76/mlst/species_key_short.csv
+    sed -i -e 's/deuterogattii/gattii/g' ~/Dropbox/yfan/fungus_zhang/fungus_76/mlst/species_key_short.csv
+fi
+=======
 
 if [ $1 == bigmem_realign ] ; then
     for i in $datadir/fastqs/*R1.fastq.gz ;
@@ -59,3 +68,4 @@ if [ $1 == bigmem_realign ] ; then
 fi
 
 
+>>>>>>> 45b7be7ec081851ee27b2931d83d7bfbe076f3f4
