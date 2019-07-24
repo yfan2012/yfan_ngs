@@ -93,10 +93,10 @@ if [ $1 == nucmer ] ; then
     ##nucmer between the two patient strains
 
     mkdir -p $datadir/mummer
-    nucmer -t 12 -p $datadir/mummer/pt_strains $datadir/assemblies_dm/197_dustmasked.fasta $datadir/assemblies_dm/178_dustmasked.fasta
+    nucmer -t 12 -p $datadir/mummer/pt_strains $datadir/dustmask/197_dustmasked.fasta $datadir/dustmask/178_dustmasked.fasta
 
     mummerplot --filter --fat --png -p $datadir/mummer/pt_strains $datadir/mummer/pt_strains.delta
 
-    dnadiff -p $datadir/mummer/pt_strains $datadir/assemblies_dm/197_dustmasked.fasta $datadir/assemblies_dm/178_dustmasked.fasta
+    dnadiff -p $datadir/mummer/pt_strains $datadir/dustmask/197_dustmasked.fasta $datadir/dustmask/178_dustmasked.fasta
 fi
     
