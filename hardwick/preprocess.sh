@@ -54,8 +54,49 @@ if [ $1 == parsnp ] ; then
     parsnp -p 12 -r ! -d $outdir/assemblies -o $outdir/parsnp
     harvesttools -i $outdir/parsnp/parsnp.ggr -V $outdir/parsnp/strain_snps.vcf
 fi
-    
+
+
 
 if [ $1 == countsnps ] ; then
-    Rscript ~/Code/utils/count_snps.R -i $outdir/parsnp/strain_snps.vcf -o$outdir/parsnp
+    Rscript ~/Code/utils/count_snps.R -i $outdir/parsnp/strain_snps.vcf -o $outdir/parsnp
 fi
+
+
+
+if [ $1 == dustmask ] ; then
+    ##See if dustmasker can get rid of those 137 potentially mis-compared snps
+    mkdir -p $datadir/dustmask
+    for i in 1694 178 197 6341 ;
+    do
+	dustmasker -in $datadir/spades/$i/$i.fasta -out $datadir/dustmask/${i}_dustmasked.fasta -outfmt fasta &
+    done
+fi    
+    
+if [ $1 == parsnp_dm ] ; then
+    mkdir -p $outdir/parsnp_dm
+    mkdir -p $outdir/assemblies_dm
+    for i in 1694 178 197 6341 ;
+    do
+	cp $datadir/dustmask/${i}_dustmasked.fasta $outdir/assemblies_dm/
+    done
+
+    parsnp -p 12 -r ! -d $outdir/assemblies_dm -o $outdir/parsnp_dm
+    harvesttools -i $outdir/parsnp_dm/parsnp.ggr -V $outdir/parsnp_dm/strain_dm_snps.vcf
+fi
+
+
+if [ $1 == countsnps_dm ] ; then
+    Rscript ~/Code/utils/count_snps.R -i $outdir/parsnp_dm/strain_dm_snps.vcf -o $outdir/parsnp_dm
+fi
+
+if [ $1 == nucmer ] ; then
+    ##nucmer between the two patient strains
+
+    mkdir -p $outdir/mummer
+    nucmer -t 12 -p $outdir/mummer/pt_strains $outdir/assemblies_dm/197_dustmasked.fasta $outdir/assemblies_dm/178_dustmasked.fasta
+
+    mummerplot --filter --fat --png -p $outdir/mummer/pt_strains$outdir/mummer/pt_strains.delta
+
+    dnadiff -p $outdir/mummer/pt_strains $outdir/assemblies_dm/197_dustmasked.fasta $outdir/assemblies_dm/178_dustmasked.fasta
+fi
+    
