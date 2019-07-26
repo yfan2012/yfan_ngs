@@ -98,7 +98,19 @@ if [ $1 == meth_extract ] ; then
     done
 fi
 
-
-
     
-    
+if [ $1 == trim_nextera ] ; then
+    ##try some v aggressive trimming of the gdna data
+    fqdir=/kyber/Data/NGS/Raw/190725_flywtf
+    datadir=~/data/190725_flywtf
+    mkdir -p $datadir
+    for i in meth unmeth ;
+    do
+	mkdir -p $datadir/trimmomatic
+	java -jar ~/software/Trimmomatic-0.39/trimmomatic-0.39.jar PE -threads 36 -phred33 \
+	     $fqdir/${i}*_R1_*.fastq.gz $fqdir/${i}*_R2_*.fastq.gz \
+	     $datadir/trimmomatic/${i}_fwd_paired.fq.gz $datadir/trimmomatic/${i}_fwd_unpaired.fq.gz \
+	     $datadir/trimmomatic/${i}_rev_paired.fq.gz $datadir/trimmomatic/${i}_rev_unpaired.fq.gz \
+	     ILLUMINACLIP:all.fa:4:10:10 LEADING:32 TRAILING:32 SLIDINGWINDOW:4:30 MINLEN:36 AVGQUAL:32
+    done
+fi
