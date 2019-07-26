@@ -114,3 +114,20 @@ if [ $1 == trim_nextera ] ; then
 	     ILLUMINACLIP:all.fa:4:10:10 LEADING:32 TRAILING:32 SLIDINGWINDOW:4:30 MINLEN:36 AVGQUAL:32
     done
 fi
+
+if [ $1 == centrifuge ] ; then
+    ml gcc
+    centdir=~/scratch/centrifuge
+    dbdir=~/scratch/centrifuge_db
+    datadir=~/work/ngs/190725_flywtf
+
+    mkdir -p $datadir/classification
+
+    $centdir/centrifuge -p 36 -x $dbdir/abvm \
+			-1 $datadir/meth_fwd_paired.fq.gz,$datadir/unmeth_fwd_paired.fq.gz \
+			-2 $datadir/meth_rev_paired.fq.gz,$datadir/unmeth_rev_paired.fq.gz \
+			-S $datadir/classification/all.txt --report-file $datadir/classification/all_report.tsv
+    $centdir/centrifuge-kreport -x $dbdir/abvm $datadir/classification/all.txt > $datadir/classification/all_kreport.txt
+fi
+
+    
