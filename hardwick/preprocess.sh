@@ -91,12 +91,38 @@ fi
 
 if [ $1 == nucmer ] ; then
     ##nucmer between the two patient strains
+    ##run on smaug because gnuplot is hard to install
+    
+    mkdir -p $datadir/mummer
+    nucmer -t 12 -p $datadir/mummer/pt_strains $datadir/dustmask/197_dustmasked.fasta $datadir/dustmask/178_dustmasked.fasta
 
-    mkdir -p $outdir/mummer
-    nucmer -p $outdir/mummer/pt_strains $outdir/assemblies_dm/197_dustmasked.fasta $outdir/assemblies_dm/178_dustmasked.fasta
 
-    mummerplot --filter --fat --png -p $outdir/mummer/pt_strains $outdir/mummer/pt_strains.delta
+    mummerplot --filter --fat --png -p $datadir/mummer/pt_strains $datadir/mummer/pt_strains.delta
 
-    dnadiff -p $outdir/mummer/pt_strains $outdir/assemblies_dm/197_dustmasked.fasta $outdir/assemblies_dm/178_dustmasked.fasta
+    dnadiff -p $datadir/mummer/pt_strains $datadir/dustmask/197_dustmasked.fasta $datadir/dustmask/178_dustmasked.fasta
 fi
     
+if [ $1 == plot_tig_lens ] ; then
+    mkdir -p $outdir/plots
+    for i in 1694 178 197 6341 ;
+    do
+	Rscript ~/Code/utils/fa_len_hist.R -i $datadir/dustmask/${i}_dustmasked.fasta -o $outdir/plots -p $i
+    done
+fi
+>>>>>>> c76c10e133899989c51c74e0a37495270e95cbd3
+
+if [ $1 == longtigs ] ; then
+    mkdir -p $datadir/longtigs
+    for i in 1694 178 197 6341 ;
+    do
+	python ~/Code/utils/fastq_long.py -i $datadir/spades/$i/$i.fasta -o $datadir/longtigs/${i}_over20k.fasta -l 20000
+    done
+fi
+
+if [ $1 == parsnp_long ] ; then
+    mkdir -p $outdir/parsnp_long
+    
+    parsnp -p 12 -r $datadir/longtigs/178_over20k.fasta -d $datadir/longtigs -o $outdir/parsnp_long
+    harvesttools -i $outdir/parsnp_long/parsnp.ggr -V $outdir/parsnp_long/strain_long_snps.vcf
+    Rscript ~/Code/utils/count_snps.R -i $outdir/parsnp_long/strain_long_snps.vcf -o $outdir/parsnp_long
+fi

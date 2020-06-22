@@ -98,7 +98,36 @@ if [ $1 == meth_extract ] ; then
     done
 fi
 
-
-
     
+if [ $1 == trim_nextera ] ; then
+    ##try some v aggressive trimming of the gdna data
+    fqdir=/kyber/Data/NGS/Raw/190725_flywtf
+    datadir=~/data/190725_flywtf
+    mkdir -p $datadir
+    for i in meth unmeth ;
+    do
+	mkdir -p $datadir/trimmomatic
+	java -jar ~/software/Trimmomatic-0.39/trimmomatic-0.39.jar PE -threads 36 -phred33 \
+	     $fqdir/${i}*_R1_*.fastq.gz $fqdir/${i}*_R2_*.fastq.gz \
+	     $datadir/trimmomatic/${i}_fwd_paired.fq.gz $datadir/trimmomatic/${i}_fwd_unpaired.fq.gz \
+	     $datadir/trimmomatic/${i}_rev_paired.fq.gz $datadir/trimmomatic/${i}_rev_unpaired.fq.gz \
+	     ILLUMINACLIP:all.fa:4:10:10 LEADING:32 TRAILING:32 SLIDINGWINDOW:4:30 MINLEN:36 AVGQUAL:32
+    done
+fi
+
+if [ $1 == centrifuge ] ; then
+    ml gcc
+    centdir=~/scratch/centrifuge
+    dbdir=~/scratch/centrifuge_db
+    datadir=~/work/ngs/190725_flywtf
+
+    mkdir -p $datadir/classification
+
+    $centdir/centrifuge -p 36 -x $dbdir/abvm \
+			-1 $datadir/meth_fwd_paired.fq.gz,$datadir/unmeth_fwd_paired.fq.gz \
+			-2 $datadir/meth_rev_paired.fq.gz,$datadir/unmeth_rev_paired.fq.gz \
+			-S $datadir/classification/all.txt --report-file $datadir/classification/all_report.tsv
+    $centdir/centrifuge-kreport -x $dbdir/abvm $datadir/classification/all.txt > $datadir/classification/all_kreport.txt
+fi
+
     
