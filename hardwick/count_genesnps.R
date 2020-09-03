@@ -51,17 +51,42 @@ snp_filter  <- function(reportfile, mincov, minratio, sampname) {
     return(vcf)
 }
 
-snpeff_filter <- function(reportfile, mincov, sampname) {
+snpeff_filter <- function(reportfile, sampname) {
     vcf=read_csv(reportfile) %>%
         mutate(altratio=ao/(ao+ro)) %>%
         mutate(cov=ao+ro) %>%
-        mutate(samp=sampname) %>%
-        filter(cov>mincov)
+        mutate(samp=sampname)
     return(vcf)
 }
     
 
-
+collapse_snp_pair <- function(snppair) {
+    ##same variant often appears in two samps, but labeled with different len ref/alt
+    ##find these weirdly labeled ones and collapse them to the same position
+    ##group by chrm/pos to find the final tally of how different the two var sets are
+    clustpair=snppair %>%
+        arrange(chrm, pos) %>%
+        group_by(chrm) %>%
+        mutate(origpos=pos) %>%
+        mutate(diffpos=c(diff(pos),0)) %>%
+        mutate(pos=case_when(diffpos<=str_length(ref) ~ pos+diffpos, T ~ pos))
+    change=TRUE
+    iter=0
+    while (change==TRUE) {
+        iter=iter+1
+        print(iter)
+        clustpairnew=clustpair %>%
+            arrange(chrm, pos) %>%
+            group_by(chrm) %>%
+            mutate(diffpos=c(diff(pos),0)) %>%
+            mutate(pos=case_when(diffpos<=str_length(ref) ~ pos+diffpos, T ~ pos))
+        if (identical(clustpairnew,clustpair)) {
+            change=FALSE
+        }
+        clustpair=clustpairnew
+    }
+    return(clustpair)
+}
 
 ##coding region of 178, test for all annotations
 vcf178='~/Dropbox/yfan/hardwick/parsnp_long/strain_long_snps.vcf'
@@ -125,15 +150,18 @@ repfile197=paste0(datadir, 'vars/197.snpeff.csv')
 repfile1694=paste0(datadir, 'vars/1694.snpeff.csv')
 repfile6341=paste0(datadir, 'vars/6341.snpeff.csv')
 
-snpeff178=snpeff_filter(repfile178, 15, '178')
-snpeff197=snpeff_filter(repfile197, 15, '197')
-snpeff1694=snpeff_filter(repfile1694, 15, '1694')
-snpeff6341=snpeff_filter(repfile6341, 15, '6341')
+snpeff178=snpeff_filter(repfile178, '178')
+snpeff197=snpeff_filter(repfile197, '197')
+snpeff1694=snpeff_filter(repfile1694, '1694')
+snpeff6341=snpeff_filter(repfile6341, '6341')
 
 all=rbind(snpeff178, snpeff197, snpeff1694, snpeff6341)
+allsnps=all %>%
+    filter(altratio>.75 && cov>15)
+
 
 ##number of vars relative to ref
-allbysamp=all %>%
+allbysamp=allsnps %>%
     group_by(chrm, pos, ref, samp) %>%
     filter(row_number()==1)
 numvars=tibble(samps=c('178', '197', '1694', '6341'))
@@ -157,24 +185,77 @@ plot=ggplot(allbyvars, aes(x=altratio, colour=samp, fill=samp, alpha=.20)) +
     theme_bw()
 print(plot)
 dev.off()
-    
+
+
+
 ##find unique vars between samps
-allsnps=all %>%
-    filter(altratio>.75)
-snpsdf=allsnps %>%
+snpsdf=all %>%
     group_by(chrm, pos , ref, alt) %>%
     summarise(s178='178' %in% samp,
               s197='197' %in% samp,
               s1694='1694' %in% samp,
               s6341='6341' %in% samp)
+
+check_substring <- function(groupdf) {
+    groupdf_sums=groupdf %>%
+        rowwise() %>%
+        mutate(subsum=sum(grepl(alt, groupdf$alt, fixed=TRUE)))
+    return(groupdf_sums)
+}
+                     
+
 sampnames=c('s178', 's197', 's1694', 's6341')
 confusion=matrix(nrow=4, ncol=4)
 rownames(confusion)=sampnames
 colnames(confusion)=sampnames
 for (i in sampnames) {
     for (j in sampnames) {
-        diffs=sum(snpsdf[,i]!=snpsdf[,j])
-        confusion[i,j]=diffs
+        diffs=snpsdf[snpsdf[,i]!=snpsdf[,j],]
+        collapsed_diffs=collapse_snp_pair(diffs)
+        ##each group as two rows max
+        collapsed=collapsed_diffs %>%
+            group_by(chrm, pos) %>%
+            group_modify(~ check_substring(.x)) %>%
+            filter(
+            filter(subsum==1) %>%
+            group_by(chrm, origpos) %>%
+            group_modify(~ check_substring(.x)) %>%
+            filter(subsum==1)
     }
 }
+write_csv(data.frame(confusion), paste0(dbxdir, 'snp_diffs.csv'))
+
+
+
+##vars between 197 and 178
+ptsnpsdf=snpsdf %>%
+    filter(s197!=s178)
+ptsnps_collapse=collapse_snp_pair(ptsnpsdf)
+
+
+    left_join(all, by=c('chrm', 'pos')) %>%
+    filter(samp=='197'|samp=='178') %>%
+    filter()
+
+
+
+collapsed_ptsnpsdf=collapse_snp_pair(ptsnpsdf) %>%
+    group_by(chrm, pos) %>%
+    summarise(same=str_count(alt[1], alt[2])>0 | str_count(alt[2], alt[1])>0)
+collapsed_ptsnpsdf[is.na(collapsed_ptsnpsdf)]=FALSE
+truediffs=collapsed_ptsnpsdf %>%
+    filter(same==FALSE)
+
+ptsnps=allsnps %>%
+    filter(samp=='197' | samp=='178') %>%
+    full_join(truediffs, by=c('chrm', 'pos'))
+    
+
+
+##coding vars
+codingsnps=allsnps %>%
+    
+
+
+
 
