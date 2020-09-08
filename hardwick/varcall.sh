@@ -53,7 +53,7 @@ if [ $1 == annotsnps ] ; then
 	bedtools intersect -wa -wb\
 		 -a $datadir/vars/$i.vcf \
 		 -b $datadir/reference/CRNE_H99.gff \
-		 > $datadir/vars/$i.bed
+		 > $datadir/vars/$i.annot.bed
     done
 fi
 
@@ -61,7 +61,7 @@ if [ $1 == snpreport ] ; then
     for i in 178 197 1694 6341 ;
     do
 	python ~/Code/utils/snps_report.py \
-	       -v $datadir/vars/$i.bed \
+	       -v $datadir/vars/$i.annot.bed \
 	       -o $datadir/vars/$i.csv
     done
 fi
@@ -91,4 +91,23 @@ if [ $1 == snpeff_report ] ; then
 	       -o $datadir/vars/$i.snpeff.csv
     done
 fi
+	
+
+if [ $1 == snpeffsummary ] ; then
+    for i in 178 197 1694 6341 ;
+    do
+	python ~/Code/utils/snps_report.py \
+	       -v $datadir/vars/$i.snpeff.vcf \
+	       -o $datadir/vars/$i.snpeffvars.bed \
+	       -b
+    done
+fi
+
+if [ $1 == bedslice ] ; then
+    for i in 178 197 1694 6341 ;
+    do
+	awk -F $'\t' 'BEGIN {OFS = FS} {print $1, $2, $3}' $datadir/vars/$i.snpeffvars.bed > $datadir/vars/$i.snpeffvars_3col.bed
+    done
+fi
+
 	
