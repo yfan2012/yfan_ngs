@@ -1,6 +1,7 @@
 suppressPackageStartupMessages(library("gridExtra"))
 suppressPackageStartupMessages(library('tidyverse'))
 suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("stringdist"))
 
 
 snp_annotate <- function(vcffile, gfffile, prefix) {
@@ -60,34 +61,7 @@ snpeff_filter <- function(reportfile, sampname) {
 }
     
 
-collapse_snp_pair <- function(snppair) {
-    ##same variant often appears in two samps, but labeled with different len ref/alt
-    ##find these weirdly labeled ones and collapse them to the same position
-    ##group by chrm/pos to find the final tally of how different the two var sets are
-    clustpair=snppair %>%
-        arrange(chrm, pos) %>%
-        group_by(chrm) %>%
-        mutate(origpos=pos) %>%
-        mutate(diffpos=c(diff(pos),0)) %>%
-        mutate(pos=case_when(diffpos<=str_length(ref) ~ pos+diffpos, T ~ pos))
-    change=TRUE
-    iter=0
-    while (change==TRUE) {
-        iter=iter+1
-        print(iter)
-        clustpairnew=clustpair %>%
-            arrange(chrm, pos) %>%
-            group_by(chrm) %>%
-            mutate(diffpos=c(diff(pos),0)) %>%
-            mutate(pos=case_when(diffpos<=str_length(ref) ~ pos+diffpos, T ~ pos))
-        if (identical(clustpairnew,clustpair)) {
-            change=FALSE
-        }
-        clustpair=clustpairnew
-    }
-    return(clustpair)
-}
-
+ 
 ##coding region of 178, test for all annotations
 vcf178='~/Dropbox/yfan/hardwick/parsnp_long/strain_long_snps.vcf'
 gff178="/kyber/Data/NGS/projects/190513_hardwick/augustus/178_all.gff"
@@ -157,7 +131,7 @@ snpeff6341=snpeff_filter(repfile6341, '6341')
 
 all=rbind(snpeff178, snpeff197, snpeff1694, snpeff6341)
 allsnps=all %>%
-    filter(altratio>.75 && cov>15)
+    filter(altratio>.5 && cov>15)
 
 
 ##number of vars relative to ref
@@ -171,13 +145,14 @@ numvars=numvars %>%
 write_csv(numvars, paste0(dbxdir, 'numvars_vs_reference.csv'))
 
 
+
 ##plot ratio of alt reads to total cov
 allbyvars=all %>%
     group_by(chrm, pos, samp) %>%
     filter(row_number()==n())
 
 outfile=paste0(dbxdir, 'plots/callratios.pdf')
-pdf(outfile, w=15, h=11)
+pdf(outfile, w=15, h=8)
 plot=ggplot(allbyvars, aes(x=altratio, colour=samp, fill=samp, alpha=.20)) +
     geom_density() +
     ggtitle('Reference vs alt snp ratios') +
@@ -185,6 +160,7 @@ plot=ggplot(allbyvars, aes(x=altratio, colour=samp, fill=samp, alpha=.20)) +
     theme_bw()
 print(plot)
 dev.off()
+
 
 
 
@@ -196,10 +172,74 @@ snpsdf=all %>%
               s1694='1694' %in% samp,
               s6341='6341' %in% samp)
 
+collapse_snp_pair <- function(snppair) {
+    ##same variant often appears in two samps, but labeled with different len ref/alt
+    ##find these weirdly labeled ones and collapse them to the same position
+    ##group by chrm/pos to find the final tally of how different the two var sets are
+    clustpair=snppair %>%
+        arrange(chrm, pos) %>%
+        group_by(chrm) %>%
+        mutate(origpos=pos) %>%
+        mutate(diffpos=c(diff(pos),0)) %>%
+        group_by(chrm, pos) %>%
+        mutate(truediff=max(diffpos)) %>%
+        mutate(toadd=any(truediff<=max(str_length(ref),str_length(alt)))) %>%
+        mutate(newpos=case_when(toadd ~ pos+truediff, T ~ pos)) %>%
+        ungroup() %>%
+        mutate(pos=newpos)
+    change=TRUE
+    iter=0
+    while (change==TRUE) {
+        iter=iter+1
+        print(iter)
+        clustpairnew=clustpair %>%
+            arrange(chrm, pos) %>%
+            group_by(chrm) %>%
+            mutate(diffpos=c(diff(pos),0)) %>%
+            group_by(chrm, pos) %>%
+            mutate(truediff=max(diffpos)) %>%
+            mutate(toadd=any(truediff<=max(str_length(ref), str_length(alt)))) %>%
+            mutate(newpos=case_when(toadd ~ pos+truediff, T ~ pos)) %>%
+            ungroup() %>%
+            mutate(pos=newpos)
+        if (identical(clustpairnew,clustpair)) {
+            change=FALSE
+        }
+        clustpair=clustpairnew
+    }
+    return(clustpairnew)
+}
+
 check_substring <- function(groupdf) {
-    groupdf_sums=groupdf %>%
-        rowwise() %>%
-        mutate(subsum=sum(grepl(alt, groupdf$alt, fixed=TRUE)))
+    ##alts=grepl(groupdf$alt[1], groupdf$alt, fixed=TRUE)
+    if (dim(groupdf)[1]>0) {
+        dists=stringdist(groupdf$alt[1], groupdf$alt, method='lcs')
+        totallen=nchar(groupdf$alt)+nchar(groupdf$alt[1])
+        chars=nchar(groupdf$alt)
+        allchars=matrix(nrow=length(chars), ncol=length(chars))
+        for (i in 1:length(chars)){
+            for (j in 1:length(chars)) {
+            allchars[i,j]=min(chars[i], chars[j])
+            }
+        }
+        
+        for (i in groupdf$alt[-1]) {
+            ##alts=rbind(alts, grepl(i, groupdf$alt, fixed=TRUE))
+            dists=rbind(dists, stringdist(i, groupdf$alt, method='lcs'))
+            totallen=rbind(totallen, nchar(groupdf$alt)+nchar(i))
+        }
+        
+        overlaps=(totallen-dists)/2/allchars>.5
+        if ( length(overlaps)>1) {
+            hits=rowSums(overlaps)
+        }else{
+            hits=1
+        }
+        groupdf_sums=groupdf %>%
+            mutate(subsum=hits)
+    }else{
+        groupdf_sums=groupdf
+    }
     return(groupdf_sums)
 }
                      
@@ -210,19 +250,41 @@ rownames(confusion)=sampnames
 colnames(confusion)=sampnames
 for (i in sampnames) {
     for (j in sampnames) {
-        diffs=snpsdf[snpsdf[,i]!=snpsdf[,j],]
-        collapsed_diffs=collapse_snp_pair(diffs)
-        ##each group as two rows max
-        collapsed=collapsed_diffs %>%
-            group_by(chrm, pos) %>%
-            group_modify(~ check_substring(.x)) %>%
-            filter(
-            filter(subsum==1) %>%
-            group_by(chrm, origpos) %>%
-            group_modify(~ check_substring(.x)) %>%
-            filter(subsum==1)
+        if (is.na(confusion[i,j])) {
+            print(paste0(i, ' ', j))
+            diffs=snpsdf[snpsdf[,i]!=snpsdf[,j],]
+            collapsed_diffs=collapse_snp_pair(diffs)
+            ##each group as two rows max
+            collapsed=collapsed_diffs %>%
+                group_by(chrm, pos) %>%
+                group_modify(~ check_substring(.x)) %>%
+                ##filter(subsum==1 && revsubsum==1) %>%
+                filter(subsum<=1) %>%
+                group_by(chrm, origpos) %>%
+                group_modify(~ check_substring(.x)) %>%
+                ##filter(subsum==1 && revsubsum==1) %>%
+                filter(subsum<=1) %>%
+                ungroup() %>%
+                select(-pos) %>%
+                mutate(pos=origpos) %>%
+                select(-origpos)
+            
+            ##now filter for frequency, etc
+            isamp=substr(i,2,5)
+            jsamp=substr(j, 2,5)
+            collapsefreq=all %>%
+                inner_join(collapsed, by=c('chrm', 'pos', 'ref','alt')) %>%
+                filter(samp==isamp | samp==jsamp) %>%
+                group_by(chrm, pos, ref, alt) %>%
+                filter(row_number()==n()) %>%
+                filter(cov>15 & altratio>.5) %>%
+                arrange(chrm, pos)
+            confusion[i,j]=dim(collapsefreq)[1]
+            confusion[j,i]=dim(collapsefreq)[1]
+        }
     }
 }
+
 write_csv(data.frame(confusion), paste0(dbxdir, 'snp_diffs.csv'))
 
 
@@ -230,31 +292,178 @@ write_csv(data.frame(confusion), paste0(dbxdir, 'snp_diffs.csv'))
 ##vars between 197 and 178
 ptsnpsdf=snpsdf %>%
     filter(s197!=s178)
-ptsnps_collapse=collapse_snp_pair(ptsnpsdf)
-
-
-    left_join(all, by=c('chrm', 'pos')) %>%
-    filter(samp=='197'|samp=='178') %>%
-    filter()
-
-
-
-collapsed_ptsnpsdf=collapse_snp_pair(ptsnpsdf) %>%
+ptdiffs=collapse_snp_pair(ptsnpsdf)
+ptcollapsed=ptdiffs %>%
     group_by(chrm, pos) %>%
-    summarise(same=str_count(alt[1], alt[2])>0 | str_count(alt[2], alt[1])>0)
-collapsed_ptsnpsdf[is.na(collapsed_ptsnpsdf)]=FALSE
-truediffs=collapsed_ptsnpsdf %>%
-    filter(same==FALSE)
-
-ptsnps=allsnps %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    group_by(chrm, origpos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    ungroup() %>%
+    select(-pos) %>%
+    mutate(pos=origpos) %>%
+    select(-origpos)
+ptcollapsefreq=all %>%
+    inner_join(ptcollapsed, by=c('chrm', 'pos', 'ref','alt')) %>%
     filter(samp=='197' | samp=='178') %>%
-    full_join(truediffs, by=c('chrm', 'pos'))
-    
+    group_by(chrm, pos, ref, alt) %>%
+    filter(row_number()==n()) %>%
+    filter(cov>15 & altratio>.5) %>%
+    arrange(chrm, pos)
+write_csv(ptcollapsefreq, paste0(dbxdir, '197vs178.csv'))
 
 
-##coding vars
-codingsnps=allsnps %>%
-    
+##vars between 197 and 1694
+ptsnpsdf=snpsdf %>%
+    filter(s197!=s1694)
+ptdiffs=collapse_snp_pair(ptsnpsdf)
+ptcollapsed=ptdiffs %>%
+    group_by(chrm, pos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    group_by(chrm, origpos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    ungroup() %>%
+    select(-pos) %>%
+    mutate(pos=origpos) %>%
+    select(-origpos)
+ptcollapsefreq=all %>%
+    inner_join(ptcollapsed, by=c('chrm', 'pos', 'ref','alt')) %>%
+    filter(samp=='197' | samp=='1694') %>%
+    ##group_by(chrm, pos, ref, alt) %>%
+    ##filter(row_number()==n()) %>%
+    filter(cov>15 & altratio>.5) %>%
+    arrange(chrm, pos) %>%
+    ##filter(impact!='MODIFIER') %>%
+    filter(impact=='HIGH') %>%
+    filter(prot_change!='')
+write_csv(ptcollapsefreq, paste0(dbxdir, '197vs1694.csv'))
+
+
+##vars between 197 and 6341
+ptsnpsdf=snpsdf %>%
+    filter(s197!=s6341)
+ptdiffs=collapse_snp_pair(ptsnpsdf)
+ptcollapsed=ptdiffs %>%
+    group_by(chrm, pos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    group_by(chrm, origpos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    ungroup() %>%
+    select(-pos) %>%
+    mutate(pos=origpos) %>%
+    select(-origpos)
+ptcollapsefreq=all %>%
+    inner_join(ptcollapsed, by=c('chrm', 'pos', 'ref','alt')) %>%
+    filter(samp=='197' | samp=='6341') %>%
+    ##group_by(chrm, pos, ref, alt) %>%
+    ##filter(row_number()==n()) %>%
+    filter(cov>15 & altratio>.5) %>%
+    arrange(chrm, pos) %>%
+    ##filter(impact!='MODIFIER') %>%
+    filter(impact=='HIGH') %>%
+    filter(prot_change!='')
+write_csv(ptcollapsefreq, paste0(dbxdir, '197vs6341.csv'))
+
+
+
+##vars between 178 and 1694
+ptsnpsdf=snpsdf %>%
+    filter(s178!=s1694)
+ptdiffs=collapse_snp_pair(ptsnpsdf)
+ptcollapsed=ptdiffs %>%
+    group_by(chrm, pos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    group_by(chrm, origpos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    ungroup() %>%
+    select(-pos) %>%
+    mutate(pos=origpos) %>%
+    select(-origpos)
+ptcollapsefreq=all %>%
+    inner_join(ptcollapsed, by=c('chrm', 'pos', 'ref','alt')) %>%
+    filter(samp=='178' | samp=='1694') %>%
+    ##group_by(chrm, pos, ref, alt) %>%
+    ##filter(row_number()==n()) %>%
+    filter(cov>15 & altratio>.5) %>%
+    arrange(chrm, pos) %>%
+    ##filter(impact!='MODIFIER') %>%
+    filter(impact=='HIGH') %>%
+    filter(prot_change!='')
+write_csv(ptcollapsefreq, paste0(dbxdir, '178vs1694.csv'))
+
+
+##vars between 178 and 6341
+ptsnpsdf=snpsdf %>%
+    filter(s178!=s6341)
+ptdiffs=collapse_snp_pair(ptsnpsdf)
+ptcollapsed=ptdiffs %>%
+    group_by(chrm, pos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    group_by(chrm, origpos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    ungroup() %>%
+    select(-pos) %>%
+    mutate(pos=origpos) %>%
+    select(-origpos)
+ptcollapsefreq=all %>%
+    inner_join(ptcollapsed, by=c('chrm', 'pos', 'ref','alt')) %>%
+    filter(samp=='178' | samp=='6341') %>%
+    ##group_by(chrm, pos, ref, alt) %>%
+    ##filter(row_number()==n()) %>%
+    filter(cov>15 & altratio>.5) %>%
+    arrange(chrm, pos) %>%
+    ##filter(impact!='MODIFIER') %>%
+    filter(impact=='HIGH') %>%
+    filter(prot_change!='')
+write_csv(ptcollapsefreq, paste0(dbxdir, '178vs6341.csv'))
+
+##vars between 1694 and 6341
+ptsnpsdf=snpsdf %>%
+    filter(s1694!=s6341)
+ptdiffs=collapse_snp_pair(ptsnpsdf)
+ptcollapsed=ptdiffs %>%
+    group_by(chrm, pos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    group_by(chrm, origpos) %>%
+    group_modify(~ check_substring(.x)) %>%
+    ##filter(subsum==1 && revsubsum==1) %>%
+    filter(subsum<=1) %>%
+    ungroup() %>%
+    select(-pos) %>%
+    mutate(pos=origpos) %>%
+    select(-origpos)
+ptcollapsefreq=all %>%
+    inner_join(ptcollapsed, by=c('chrm', 'pos', 'ref','alt')) %>%
+    filter(samp=='1694' | samp=='6341') %>%
+    ##group_by(chrm, pos, ref, alt) %>%
+    ##filter(row_number()==n()) %>%
+    filter(cov>15 & altratio>.5) %>%
+    arrange(chrm, pos) %>%
+    ##filter(impact!='MODIFIER') %>%
+    filter(impact=='HIGH') %>%
+    filter(prot_change!='')
+write_csv(ptcollapsefreq, paste0(dbxdir, '1694vs6341.csv'))
 
 
 
