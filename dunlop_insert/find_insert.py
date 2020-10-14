@@ -2,13 +2,40 @@ import pysam
 import argparse
 import numpy
 
+def count_multiples(bamfile, chrom):
+    '''
+    prelim count of aligments per read
+    not used in main, just as sanity check
+    '''
+    counts=[0,0,0,0]
+    bam=pysam.AlignmentFile(bamfile, 'rb')
+    baminfo=pysam.IndexedReads(bam)
+    baminfo.build()
+    read_ids_all=[]
+    for readrecord in bam.fetch():
+        read_ids_all.append(readrecord.query_name)
+    read_ids=set(read_ids_all)
+    for name in read_ids:
+        readrecord=baminfo.find(name)
+        aligns=[0,0]
+        for read in readrecord:
+            if read.is_read1 and read.reference_name==chrom:
+                aligns[0]+=1
+            if read.is_read2 and read.reference_name==chrom:
+                aligns[1]+=1
+        for i in aligns:
+            if i <= 2:
+                counts[i]+=1
+            else:
+                counts[3]+=1
+    return counts
+
+
 def parseArgs():
     '''
     function to parse args in main
     '''
     parser=argparse.ArgumentParser(description='find where the insert occurs')
-    parser.add_argument('-r', '--ref', type=str, required=True,
-                        help='reference aligned to')
     parser.add_argument('-b', '--bam', type=str, required=True,
                         help='aligned reads')
     parser.add_argument('-o', '--out', type=str, required=True,
@@ -17,80 +44,83 @@ def parseArgs():
     return args
 
 
-def fasta_dict(reffile):
-    '''
-    from fastafile, get a dict of seqname:seq
-    '''
-    fa=pysam.FastaFile(reffile)
-    tigs=fa.references
-    fastadict={ x:fa.fetch(x) for x in tigs }
-    return fastadict
-
 def find_inserts(bamfile):
     '''
-    check for edges of cre alignments. if it lines up with any insert alignments, note the cre position
-    readname, read1, read_idx_ins, cre_idx_ins, 
+    find the cre insert location for each read
+    [readname, readpair, creposition, orientation_match, called_by_both_pairs]
     '''
-insert_positions=[]
+    cre_positions=[]
 
-bam=pysam.AlignmentFile(bamfile, 'rb')
-baminfo=pysam.IndexedReads(bam)
-baminfo.build()
+    ##read in bam
+    bam=pysam.AlignmentFile(bamfile, 'rb')
+    baminfo=pysam.IndexedReads(bam)
+    baminfo.build()
 
-read_ids_all=[]
-for readrecord in bam.fetch():
-    read_ids_all.append(readrecord.query_name)
-read_ids=set(read_ids_all)
-    
-for name in read_ids:
-    readrecord=baminfo.find(name)
-    ''
-    
-r1=np.array([])
-r2=np.array([])
-for read in readrecord:
-    if not read.is_unmapped:
-        if read.is_read1:
-                np.append(r1, [read.reference_name, read.reference_start, read.reference_end, read.query_alignment_start, read.query_alignment_end])
-                r1['cre'].extend([read.query_alignment_start, read.query_alignment_end])
+    ##get read names
+    read_ids_all=[]
+    for readrecord in bam.fetch():
+        read_ids_all.append(readrecord.query_name)
+    read_ids=set(read_ids_all)
 
-        elif read.is_read2:
-            if read.reference_name == 'cre':
-                r2['cre'].extend([read.query_alignment_start, read.query_alignment_end])
-            elif read.reference_name == 'insert':
-                r2['insert'].extend([read.query_alignment_start, read.query_alignment_end])
-    
+    ##analyze each read
+    for name in read_ids:
+        readrecord=baminfo.find(name)    
+        r1={'cre':[], 'insert':[]}
+        r2={'cre':[], 'insert':[]}
+        for read in readrecord:
+            if not read.is_unmapped:
+                if read.is_read1:
+                    if read.reference_name == 'insert':
+                        r1['insert'].append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
+                    elif read.reference_name == 'cre':
+                        r1['cre'].append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
+                elif read.is_read2:
+                    if read.reference_name == 'insert':
+                        r2['insert'].append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
+                    elif read.reference_name == 'cre':
+                        r2['cre'].append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
+        ##calculate cre position if the read had one alignment to cre and one to insert
+        ##if cre/insert boundary doesn't line up, just give it a None position
+        creposr1=None
+        creposr2=None
+        orientr1=None
+        orientr2=None
+        if len(r1['insert'])==1 and len(r1['cre'])==1:
+            if r1['insert'][0][3] == r1['cre'][0][4]:
+                creposr1=r1['cre'][0][1]
+            elif r1['insert'][0][4] == r1['cre'][0][3]:
+                creposr1=r1['cre'][0][0]
                 
+            orientr1=r1['cre'][0][2]==r1['insert'][0][2]
+            
+        if len(r2['insert'])==1 and len(r2['cre'])==1:
+            if r2['insert'][0][3] == r2['cre'][0][4]:
+                creposr2=r2['cre'][0][1]
+            elif r2['insert'][0][4] == r2['cre'][0][3]:
+                creposr2=r2['cre'][0][0]
+                
+            orientr2=r2['cre'][0][2]==r2['insert'][0][2]
+            
+        ##only write out one read if the cre call was the same
+        if creposr1==creposr2 and creposr1!=None:
+            cre_positions.append([name, 'read1', creposr1, orientr1, True])
+        else:
+            cre_positions.append([name, 'read1', creposr1, orientr1, False])
+            cre_positions.append([name, 'read2', creposr2, orientr2, False])
+            
+    return cre_positions
 
             
-        
-##print(' '.join([read.reference_name, read.query_name, str(read.is_read1),  str(read.is_reverse), str(read.reference_start), str(read.reference_end), str(read.query_alignment_start), str(read.query_alignment_end), read.cigarstring]))
 
-
-    
-        
-        
     
 def main():
     args=parseArgs()
+    cre_positions=find_inserts(args.bam)
+    with open(args.out, 'w') as f:
+        for i in cre_positions:
+            f.write(','.join([str(j) for j in i])+'\n')
+    f.close()
 
-    pysam
-    ##set up parallel jobs for each read
-    manager=mp.Manager()
-    q=manager.Queue()
-    pool=mp.Pool(args.threads)
-    watcher=pool.apply_async(listener, (q, args.out))
-
-
-    ##submit jobs that will accumulate in the watcher
-    jobs=[]
-    for i in fast5s:
-        job=pool.apply_async(read_mods, (i, args.bam, motifpos, motifs, args.pos, q))
-        jobs.append(job)
-
-        
-    for job in jobs:
-        job.get()
-    q.put('Done now, ty 4 ur service')
-    pool.close()
-    pool.join()
+    
+if __name__ == "__main__":
+        main()
