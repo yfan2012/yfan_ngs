@@ -48,6 +48,9 @@ def find_inserts(bamfile):
     '''
     find the cre insert location for each read
     [readname, readpair, creposition, orientation_match, called_by_both_pairs]
+    doesn't bother with any read that doesn't have exactly 1 cre alignment and 1 insert alignment
+    gets insert position by looking at shared cre/insert alignment bounds
+    checks for alignment orientation of both alignments
     '''
     cre_positions=[]
 
