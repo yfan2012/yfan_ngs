@@ -2,6 +2,20 @@ import pysam
 import argparse
 import numpy
 
+def parseArgs():
+    '''
+    function to parse args in main
+    '''
+    parser=argparse.ArgumentParser(description='find where the insert occurs')
+    parser.add_argument('-b', '--bam', type=str, required=True,
+                        help='aligned reads')
+    parser.add_argument('-o', '--out', type=str, required=True,
+                        help='output csv file')
+    args=parser.parse_args()
+    return args
+
+
+
 def count_multiples(bamfile, chrom):
     '''
     prelim count of aligments per read
@@ -31,17 +45,6 @@ def count_multiples(bamfile, chrom):
     return counts
 
 
-def parseArgs():
-    '''
-    function to parse args in main
-    '''
-    parser=argparse.ArgumentParser(description='find where the insert occurs')
-    parser.add_argument('-b', '--bam', type=str, required=True,
-                        help='aligned reads')
-    parser.add_argument('-o', '--out', type=str, required=True,
-                        help='output csv file')
-    args=parser.parse_args()
-    return args
 
 
 def find_inserts(bamfile):
