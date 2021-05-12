@@ -1,9 +1,11 @@
 #!/bin/bash
 
 rawdir=/mithril/Data/NGS/Raw/210510_dunlop_nathan
-datadir=/mithril/Data/NGS/projects/dunlop_insert/run2
+projdir=/mithril/Data/NGS/projects/dunlop_insert
+datadir=$projdir/run2
 
-ref=$datadir/reference/construct.fa
+ref1=$projdir/refs/construct1.fa
+ref2=$projdir/refs/construct2.fa
 
 if [ $1 == trim ] ; then
     mkdir -p $datadir/trimmed
@@ -23,17 +25,31 @@ fi
 if [ $1 == align ] ; then
     mkdir -p $datadir/align
 
-    bwa index $ref
+    bwa index $ref1
     
-    for i in NT284 NT285 NT286 NT287;
+    for i in NT284 NT285 ;
     do
 	bwa mem \
 	    -t 36 \
-	    $ref \
+	    $ref1 \
 	    $datadir/trimmed/${i}_fwd_paired.fq.gz \
 	    $datadir/trimmed/${i}_rev_paired.fq.gz | \
 	    samtools view -@ 36 -b | \
 	    samtools sort -@ 36 -o $datadir/align/$i.sorted.bam
 	samtools index $datadir/align/$i.sorted.bam
     done
+
+    bwa index $ref2
+    for i in NT286 NT287 ;
+    do
+	bwa mem \
+	    -t 36 \
+	    $ref2 \
+	    $datadir/trimmed/${i}_fwd_paired.fq.gz \
+	    $datadir/trimmed/${i}_rev_paired.fq.gz | \
+	    samtools view -@ 36 -b | \
+	    samtools sort -@ 36 -o $datadir/align/$i.sorted.bam
+	samtools index $datadir/align/$i.sorted.bam
+    done
+
 fi
