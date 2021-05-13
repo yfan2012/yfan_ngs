@@ -91,29 +91,32 @@ def find_inserts(bamfile):
         creposr2=None
         orientr1=None
         orientr2=None
+        insertstartr1=None
+        insertstartr2=None
         if len(r1['insert'])==1 and len(r1['cre'])==1:
             if r1['insert'][0][3] == r1['cre'][0][4]:
                 creposr1=r1['cre'][0][1]
             elif r1['insert'][0][4] == r1['cre'][0][3]:
                 creposr1=r1['cre'][0][0]
-                
             orientr1=r1['cre'][0][2]==r1['insert'][0][2]
-            
+            insertstartr1=r1['insert'][0][0]
+
+
         if len(r2['insert'])==1 and len(r2['cre'])==1:
             if r2['insert'][0][3] == r2['cre'][0][4]:
                 creposr2=r2['cre'][0][1]
             elif r2['insert'][0][4] == r2['cre'][0][3]:
                 creposr2=r2['cre'][0][0]
-                
             orientr2=r2['cre'][0][2]==r2['insert'][0][2]
-            
+            insertstartr2=r2['insert'][0][0]
+
         ##only write out one read if the cre call was the same
         if creposr1==creposr2 and creposr1!=None:
-            cre_positions.append([name, 'read1', creposr1, orientr1, True])
+            cre_positions.append([name, 'read1', creposr1, orientr1, True, insertstartr1])
         else:
-            cre_positions.append([name, 'read1', creposr1, orientr1, False])
-            cre_positions.append([name, 'read2', creposr2, orientr2, False])
-            
+            cre_positions.append([name, 'read1', creposr1, orientr1, False, insertstartr1])
+            cre_positions.append([name, 'read2', creposr2, orientr2, False, insertstartr2])
+
     return cre_positions
 
             
