@@ -6,6 +6,7 @@ datadir=$projdir/run2
 
 ref1=$projdir/refs/construct1.fa
 ref2=$projdir/refs/construct2.fa
+plasref=$projdir/refs/ptkei-dest-cre-loxp-sfgfp.fasta
 
 if [ $1 == trim ] ; then
     mkdir -p $datadir/trimmed
@@ -53,3 +54,49 @@ if [ $1 == align ] ; then
     done
 
 fi
+
+if [ $1 == yield ] ; then
+
+    for i in $datadir/trimmed/*_paired* ;
+    do
+	bash ~/Code/utils/qc/basic_run_assess_zip.sh $i
+    done
+fi
+
+if [ $1 == coverage ] ; then
+    mkdir $datadir/cov
+    for i in NT284 NT285 NT286 NT287 ;
+    do
+	bedtools genomecov -d -ibam $datadir/align/$i.sorted.bam > \
+		 $datadir/cov/$i.genomecov
+    done
+fi
+
+
+if [ $1 == align_plasmid ] ; then
+    mkdir -p $datadir/align
+
+    bwa index $plasref
+    for i in NT284 NT285 NT286 NT287 ;
+    do
+	bwa mem \
+	    -t 36 \
+	    $plasref \
+	    $datadir/trimmed/${i}_fwd_paired.fq.gz \
+	    $datadir/trimmed/${i}_rev_paired.fq.gz | \
+	    samtools view -@ 36 -b | \
+	    samtools sort -@ 36 -o $datadir/align/$i.plasmid.sorted.bam
+	samtools index $datadir/align/$i.plasmid.sorted.bam
+    done
+
+fi
+
+	
+if [ $1 == coverage_plasmid ] ; then
+    for i in NT284 NT285 NT286 NT287 ;
+    do
+	bedtools genomecov -d -ibam $datadir/align/$i.plasmid.sorted.bam > \
+		 $datadir/cov/$i.plasmid.genomecov
+    done
+fi
+	
