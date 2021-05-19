@@ -11,6 +11,8 @@ def parseArgs():
                         help='aligned reads')
     parser.add_argument('-o', '--out', type=str, required=True,
                         help='output csv file')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='verbose outputs in csv')
     args=parser.parse_args()
     return args
 
@@ -124,10 +126,7 @@ def filter_cre(cre_positions):
     '''
     filt_cre={}
     for i in cre_positions:
-        if i[0] in filt_cre:
-            if filt_cre[i[0]][1:10]!=i[2:12]:
-                filt_cre[i[0]+'_2']=i[1:12]
-        else:
+        if i[0] not in filt_cre:
             filt_cre[i[0]]=i[1:12]
     return filt_cre
                 
@@ -139,11 +138,14 @@ def main():
     with open(args.out, 'w') as f:
         for i in filt_cre:
             info=filt_cre[i]
-            ##if left it was the left insert
-            if filt_cre[i][6]<10:
-                towrite=[i, info[0], info[2], info[6]]
+            if args.verbose==reu:
+                towrite=[i]+info
             else:
-                towrite=[i, info[0], info[1], info[7]]
+                ##if left it was the left insert
+                if filt_cre[i][6]<10:
+                    towrite=[i, info[0], info[2], info[6]]
+                else:
+                    towrite=[i, info[0], info[1], info[7]]
             f.write(','.join([str(j) for j in towrite])+'\n')
     f.close()
 
