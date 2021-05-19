@@ -45,7 +45,33 @@ def count_multiples(bamfile, chrom):
     return counts
 
 
-
+class insertsinfo:
+    '''
+    store alignment info
+    '''
+    def __init__(self, name, readrecord):
+        self.readname=name
+        self.r1_ins=[]
+        self.r1_cre=[]
+        self.r2_ins=[]
+        self.r2_cre=[]
+        self.mapped=self.fillinfo(readrecord)
+    def fillinfo(self, readrecord):
+        for read in readrecord:
+            if not read.is_unmapped:
+                if read.is_read1:
+                    if read.reference_name == 'insert':
+                        self.r1_ins.append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
+                    elif read.reference_name == 'cre':
+                        self.r1_cre.append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
+                elif read.is_read2:
+                    if read.reference_name == 'insert':
+                        self.r2_ins.append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
+                    elif read.reference_name == 'cre':
+                        self.r2_cre.append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
+        return('done')
+            
+                
 
 def find_inserts(bamfile):
     '''
@@ -56,78 +82,69 @@ def find_inserts(bamfile):
     checks for alignment orientation of both alignments
     '''
     cre_positions=[]
-
+    
     ##read in bam
     bam=pysam.AlignmentFile(bamfile, 'rb')
     baminfo=pysam.IndexedReads(bam)
     baminfo.build()
-
+    
     ##get read names
     read_ids_all=[]
     for readrecord in bam.fetch():
         read_ids_all.append(readrecord.query_name)
     read_ids=set(read_ids_all)
-
-    ##analyze each read
+    
+    ##get info on each read
+    interfaces=[]
     for name in read_ids:
         readrecord=baminfo.find(name)    
-        r1={'cre':[], 'insert':[]}
-        r2={'cre':[], 'insert':[]}
-        for read in readrecord:
-            if not read.is_unmapped:
-                if read.is_read1:
-                    if read.reference_name == 'insert':
-                        r1['insert'].append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
-                    elif read.reference_name == 'cre':
-                        r1['cre'].append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
-                elif read.is_read2:
-                    if read.reference_name == 'insert':
-                        r2['insert'].append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
-                    elif read.reference_name == 'cre':
-                        r2['cre'].append([read.reference_start, read.reference_end, read.is_reverse, read.query_alignment_start, read.query_alignment_end])
-        ##calculate cre position if the read had one alignment to cre and one to insert
-        ##if cre/insert boundary doesn't line up, just give it a None position
-        creposr1=None
-        creposr2=None
-        orientr1=None
-        orientr2=None
-        insertstartr1=None
-        insertstartr2=None
-        if len(r1['insert'])==1 and len(r1['cre'])==1:
-            if r1['insert'][0][3] == r1['cre'][0][4]:
-                creposr1=r1['cre'][0][1]
-            elif r1['insert'][0][4] == r1['cre'][0][3]:
-                creposr1=r1['cre'][0][0]
-            orientr1=r1['cre'][0][2]==r1['insert'][0][2]
-            insertstartr1=r1['insert'][0][0]
-
-
-        if len(r2['insert'])==1 and len(r2['cre'])==1:
-            if r2['insert'][0][3] == r2['cre'][0][4]:
-                creposr2=r2['cre'][0][1]
-            elif r2['insert'][0][4] == r2['cre'][0][3]:
-                creposr2=r2['cre'][0][0]
-            orientr2=r2['cre'][0][2]==r2['insert'][0][2]
-            insertstartr2=r2['insert'][0][0]
-
-        ##only write out one read if the cre call was the same
-        if creposr1==creposr2 and creposr1!=None:
-            cre_positions.append([name, 'read1', creposr1, orientr1, True, insertstartr1])
-        else:
-            cre_positions.append([name, 'read1', creposr1, orientr1, False, insertstartr1])
-            cre_positions.append([name, 'read2', creposr2, orientr2, False, insertstartr2])
-
+        ins=insertsinfo(name, readrecord)
+        if len(ins.r1_ins)>0 and len(ins.r1_cre)>0:
+            interfaces.append(ins)
+        if len(ins.r2_ins)>0 and len(ins.r2_cre)>0:
+            interfaces.append(ins)
+            
+    ##get positions, check that cre and ins on a single reads goes in the same direction
+    cre_positions=[]
+    for i in interfaces:
+        if len(i.r1_ins)==1 and len(i.r1_cre)==1:
+            if i.r1_ins[0][2]==i.r1_cre[0][2]:
+                cre_positions.append([i.readname, 'r1']+i.r1_cre[0]+i.r1_ins[0])
+        if len(i.r2_ins)==1 and len(i.r2_cre)==1:
+            if i.r2_ins[0][2]==i.r2_cre[0][2]:
+                cre_positions.append([i.readname, 'r2']+i.r2_cre[0]+i.r2_ins[0])
+                
     return cre_positions
 
-            
 
+
+def filter_cre(cre_positions):
+    '''
+    filter down cre_positions
+    '''
+    filt_cre={}
+    for i in cre_positions:
+        if i[0] in filt_cre:
+            if filt_cre[i[0]][1:10]!=i[2:12]:
+                filt_cre[i[0]+'_2']=i[1:12]
+        else:
+            filt_cre[i[0]]=i[1:12]
+    return filt_cre
+                
     
 def main():
     args=parseArgs()
     cre_positions=find_inserts(args.bam)
+    filt_cre=filter_cre(cre_positions)
     with open(args.out, 'w') as f:
-        for i in cre_positions:
-            f.write(','.join([str(j) for j in i])+'\n')
+        for i in filt_cre:
+            info=filt_cre[i]
+            ##if left it was the left insert
+            if filt_cre[i][6]<10:
+                towrite=[i, info[0], info[2], info[6]]
+            else:
+                towrite=[i, info[0], info[1], info[7]]
+            f.write(','.join([str(j) for j in towrite])+'\n')
     f.close()
 
     
