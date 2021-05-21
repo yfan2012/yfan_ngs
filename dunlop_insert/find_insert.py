@@ -48,7 +48,7 @@ def count_multiples(bamfile, chrom):
                 counts[3]+=1
     return counts
 
-def real_query_start(ctups, qas):
+def real_query_start(ctups):
     '''
     get real query start given hard clipping
     take read.cigartuples and read.query_alignment_start
@@ -77,7 +77,7 @@ class insertsinfo:
     def fillinfo(self, readrecord):
         for read in readrecord:
             if not read.is_unmapped:
-                realstart=real_query_start(read.cigartuples, read.query_alignment_start)
+                realstart=real_query_start(read.cigartuples)
                 realend=realstart+read.query_alignment_length
                 if read.is_read1:
                     if read.reference_name == 'insert':
