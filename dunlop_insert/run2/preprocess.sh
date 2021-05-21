@@ -100,3 +100,33 @@ if [ $1 == coverage_plasmid ] ; then
     done
 fi
 	
+if [ $1 == bowtie ] ; then
+    mkdir -p $datadir/align
+    
+    idxname=`basename $ref1 .fa`
+    bowtie2-build $ref1 $idxname
+    for i in NT284 NT285 ;
+    do
+	bowtie2 -p 36 \
+		-x $idxname \
+		-1 $datadir/trimmed/${i}_fwd_paired.fq.gz \
+		-2 $datadir/trimmed/${i}_rev_paired.fq.gz | \
+	    samtools view -@ 36 -b | \
+	    samtools sort -@ 36 -o $datadir/align/$i.bt2.sorted.bam
+	samtools index $datadir/align/$i.bt2.sorted.bam
+    done
+
+    idxname2=`basename $ref2 .fa`
+    bowtie2-build $ref2 $idxname2
+    for i in NT286 NT287 ;
+    do
+	bowtie2 -p 36 \
+		-x $idxname2 \
+		-1 $datadir/trimmed/${i}_fwd_paired.fq.gz \
+		-2 $datadir/trimmed/${i}_rev_paired.fq.gz | \
+	    samtools view -@ 36 -b | \
+	    samtools sort -@ 36 -o $datadir/align/$i.bt2.sorted.bam
+	samtools index $datadir/align/$i.bt2.sorted.bam
+    done
+
+fi
