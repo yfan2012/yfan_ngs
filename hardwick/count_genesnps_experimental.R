@@ -52,6 +52,7 @@ snp_filter  <- function(reportfile, mincov, minratio, sampname) {
     return(vcf)
 }
 
+
 snpeff_filter <- function(reportfile, sampname) {
     vcf=read_csv(reportfile) %>%
         mutate(altratio=ao/(ao+ro)) %>%
@@ -60,6 +61,8 @@ snpeff_filter <- function(reportfile, sampname) {
     return(vcf)
 }
     
+
+ 
 ##coding region of 178, test for all annotations
 vcf178='~/Dropbox/yfan/hardwick/parsnp_long/strain_long_snps.vcf'
 gff178="/kyber/Data/NGS/projects/190513_hardwick/augustus/178_all.gff"
@@ -67,34 +70,17 @@ prefix="197_over20k"
 
 snp_annotate(vcf178, gff178, prefix)
 
-
-
-
-
 repfile178=paste0(datadir, 'vars/178.csv')
 repfile197=paste0(datadir, 'vars/197.csv')
 repfile1694=paste0(datadir, 'vars/1694.csv')
 repfile6341=paste0(datadir, 'vars/6341.csv')
+
 
 rep178=snp_filter(repfile178, 15, .8, '178')
 rep197=snp_filter(repfile197, 15, .8, '197')
 rep1694=snp_filter(repfile1694, 15, .8, '1694')
 rep6341=snp_filter(repfile6341, 15, .8, '6341')
 all=rbind(rep178, rep197, rep1694, rep6341)
-
-##check out data from snp calling
-datadir='/kyber/Data/NGS/projects/190513_hardwick/'
-dbxdir='~/Dropbox/yfan/tmp/'
-
-qcfile=paste0(dbxdir, 'plots/vars_qc.pdf')
-pdf(qcfile, h=5, w=12)
-qcplot=ggplot(all, aes(x=altratio, colour=sampname, fill=sampname, alpha=.3)) +
-    geom_density() +
-    ggtitle('alt allele ratio') +
-    theme_bw()
-print(qcplot)
-##okay, looks like reads most agree internally for all samps
-dev.off()
 
 
 ##find which snps have which samps
@@ -106,6 +92,23 @@ snpsamps=all %>%
               s6341='6341' %in% sampname)
 
 sampnames=c('s178', 's197', 's1684', 's6341')
+
+
+
+##check out data from snp calling
+datadir='/kyber/Data/NGS/projects/190513_hardwick/'
+dbxdir='~/Dropbox/yfan/hardwick/'
+
+qcfile=paste0(dbxdir, 'plots/vars_qc.pdf')
+pdf(qcfile, h=5, w=12)
+qcplot=ggplot(all, aes(x=altratio, colour=sampname, fill=sampname, alpha=.3)) +
+    geom_density() +
+    ggtitle('alt allele ratio') +
+    theme_bw()
+print(qcplot)
+##okay, looks like reads most agree internally for all samps
+dev.off()
+
 
 
 labsnps=snpsamps %>%
@@ -131,18 +134,26 @@ snpeff6341=snpeff_filter(repfile6341, '6341')
 
 all=rbind(snpeff178, snpeff197, snpeff1694, snpeff6341)
 allsnps=all %>%
-    filter(altratio>.5 && cov>15)
+    filter(altratio>.5) %>% 
+    filter(cov>15)
 
 
 ##number of vars relative to ref
+'''
+allbysamp=allsnps %>%
+    group_by(chrm, pos, ref, alt, ro, ao, prot_change, altratio, cov, samp) %>%
+    summarise(annot=str_c(annotation, collapse='|'), feat_type=str_c(feature_type, collapse='|'))
+'''
 allbysamp=allsnps %>%
     group_by(chrm, pos, ref, samp) %>%
     filter(row_number()==1)
+
 numvars=tibble(samps=c('178', '197', '1694', '6341'))
 numvars=numvars %>%
     rowwise() %>%
     mutate(numsnps=sum(allbysamp$samp==samps))
 write_csv(numvars, paste0(dbxdir, 'numvars_vs_reference.csv'))
+
 
 
 
@@ -165,7 +176,7 @@ dev.off()
 
 
 ##find unique vars between samps
-snpsdf=all %>%
+snpsdf=allbysamp %>%
     group_by(chrm, pos , ref, alt) %>%
     summarise(s178='178' %in% samp,
               s197='197' %in% samp,
@@ -250,7 +261,7 @@ rownames(confusion)=sampnames
 colnames(confusion)=sampnames
 for (i in sampnames) {
     for (j in sampnames) {
-        if (is.na(confusion[i,j])) {
+        if (is.na(confusion[i,j]) & i!=j) {
             print(paste0(i, ' ', j))
             diffs=snpsdf[snpsdf[,i]!=snpsdf[,j],]
             collapsed_diffs=collapse_snp_pair(diffs)
@@ -306,7 +317,7 @@ ptcollapsed=ptdiffs %>%
     select(-pos) %>%
     mutate(pos=origpos) %>%
     select(-origpos)
-ptcollapsefreq=all %>%
+ptcollapsefreq=allbysamp %>%
     inner_join(ptcollapsed, by=c('chrm', 'pos', 'ref','alt')) %>%
     filter(samp=='197' | samp=='178') %>%
     group_by(chrm, pos, ref, alt) %>%

@@ -7,9 +7,68 @@ rawdir='/mithril/Data/NGS/Raw/210510_dunlop_nathan'
 datadir='/mithril/Data/NGS/projects/dunlop_insert/run2/positions'
 samps=c('NT284', 'NT285', 'NT286', 'NT287')
 
-poscols=c('readname', 'pair', 'crepos', 'orient', 'redund', 'insert')
+poscols=c('readname', 'pair', 'orient','crepos', 'insert')
+
+alldata=tibble(readname=as.character(),
+               pair=as.character(),
+               orient=as.logical(),
+               crepos=as.numeric(),
+               insert=as.numeric(),
+               samp=as.character())
+
+for (i in samps) {
+    posfile=file.path(datadir, paste0(i, '.positions.csv'))
+    posdata=read_csv(posfile, col_names=poscols) %>%
+        mutate(samp=i)
+    alldata=bind_rows(alldata, posdata)
+}
+
+plot_poshist <- function(alldata, name) {
+    section=alldata %>%
+        filter(samp==name)
+    plot=ggplot(section, aes(x=crepos, colour=samp, fill=samp, alpha=.3)) +
+        geom_histogram() +
+        ggtitle(name) +
+        theme_bw()
+    return(plot)
+}
+
+nt284pos=plot_poshist(alldata, samps[1])
+nt285pos=plot_poshist(alldata, samps[2])
+nt286pos=plot_poshist(alldata, samps[3])
+nt287pos=plot_poshist(alldata, samps[4])
+
+poshistpdf=file.path(dbxdir, 'poshist.pdf')
+pdf(poshistpdf, w=15, h=9)
+plot_grid(nt284pos, nt285pos, nt286pos, nt287pos, ncol=2)
+dev.off()
+
+plot_covhist <- function(alldata, name) {
+    section=alldata %>%
+        filter(samp==name) %>%
+        group_by(crepos) %>%
+        summarise(count=n()) %>%
+        mutate(samp=name)
+    plot=ggplot(section, aes(x=count, colour=samp, fill=samp, alpha=.3)) +
+        geom_histogram() +
+        ggtitle(name) +
+        scale_y_log10() +
+        theme_bw()
+    return(plot)
+}
+nt284=plot_covhist(alldata, samps[1])
+nt285=plot_covhist(alldata, samps[2])
+nt286=plot_covhist(alldata, samps[3])
+nt287=plot_covhist(alldata, samps[4])
+
+covhistpdf=file.path(dbxdir, 'covhist.pdf')
+pdf(covhistpdf, w=15, h=9)
+plot_grid(nt284, nt285, nt286, nt287, ncol=2)
+dev.off()
 
 
+
+#################################################################33p
 ##filter for reads that actually have the interface
 for (i in samps) {
     posfile=file.path(datadir, paste0(i, '.positions.csv'))
