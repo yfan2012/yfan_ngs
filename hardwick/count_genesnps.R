@@ -84,7 +84,7 @@ all=rbind(rep178, rep197, rep1694, rep6341)
 
 ##check out data from snp calling
 datadir='/kyber/Data/NGS/projects/190513_hardwick/'
-dbxdir='~/Dropbox/yfan/tmp/'
+dbxdir='~/Dropbox/yfan/hardwick/'
 
 qcfile=paste0(dbxdir, 'plots/vars_qc.pdf')
 pdf(qcfile, h=5, w=12)
