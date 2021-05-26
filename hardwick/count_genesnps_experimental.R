@@ -176,7 +176,7 @@ dev.off()
 
 
 ##find unique vars between samps
-snpsdf=allbysamp %>%
+snpsdf=all %>%
     group_by(chrm, pos , ref, alt) %>%
     summarise(s178='178' %in% samp,
               s197='197' %in% samp,
