@@ -2,7 +2,7 @@ library(tidyverse)
 library(Seurat)
 library(patchwork)
 
-dbxdir='~/Dropbox/yfan/dunlop/single_cell'
+dbxdir='~/gdrive/dunlop/single_cell'
 h5file=file.path(dbxdir, '10X', 'raw_feature_bc_matrix.h5')
 
 ##load h5 data
