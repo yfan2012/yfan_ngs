@@ -166,13 +166,11 @@ def correct_starts(filt_cre):
             adjust=filt_cre[i][5]-filt_cre[i][9]
             if adjust>0:
                 filt_cre[i][2]-=adjust
-                print(i, filt_cre[i][0], filt_cre[i][6], adjust)
             newfiltcre[i]=filt_cre[i]
         else:
             adjust=filt_cre[i][10]-filt_cre[i][4]
             if adjust>0:
                 filt_cre[i][1]+=adjust
-                print(i, filt_cre[i][0], filt_cre[i][6], adjust)
             newfiltcre[i]=filt_cre[i]
     return newfiltcre
 
