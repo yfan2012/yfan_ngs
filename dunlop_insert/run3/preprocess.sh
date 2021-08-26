@@ -56,10 +56,20 @@ if [ $1 == align ] ; then
 fi
 
 if [ $1 == yield ] ; then
-
-    for i in $datadir/trimmed/*_paired* ;
+    for i in NT278 NT279 NT296 NT297 NT298 NT299 ;
     do
-	bash ~/Code/utils/qc/basic_run_assess_zip.sh $i
+	bash ~/Code/utils/qc/basic_run_assess_zip.sh $rawdir/${i}*_L001_R1_001.fastq.gz >> $datadir/run3_info.csv
+	bash ~/Code/utils/qc/basic_run_assess_zip.sh $rawdir/${i}*_L001_R2_001.fastq.gz >> $datadir/run3_info.csv
     done
+
+    for i in NT278 NT279 NT296 NT297 NT298 NT299 ;
+    do
+	bash ~/Code/utils/qc/basic_run_assess_zip.sh $datadir/trimmed/${i}_fwd_paired.fq.gz >> $datadir/run3_info.csv
+	bash ~/Code/utils/qc/basic_run_assess_zip.sh $datadir/trimmed/${i}_rev_paired.fq.gz >> $datadir/run3_info.csv
+    done
+
+    sed -i -e "s|$rawdir/||g" $datadir/run3_info.csv
+    sed -i -e "s|$datadir/trimmed/||g" $datadir/run3_info.csv
+    
 fi
 
