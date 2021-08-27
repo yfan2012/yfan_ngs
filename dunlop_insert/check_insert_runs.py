@@ -136,7 +136,7 @@ def main():
     args=parseArgs()
     crerange=check_plas()
     states=count_states(args.bamfile)
-    print('unmapped,plas_only,ins_only,cre_only,ins_cre,ins_plas,cre_plas,part_unmapped,multiple,recombined')
+    ##print('#unmapped,plas_only,ins_only,cre_only,ins_cre,ins_plas,cre_plas,multiple,recombined')
     print(','.join([str(x) for x in states.r1_states]))
     print(','.join([str(x) for x in states.r2_states]))
 

@@ -19,7 +19,6 @@ def parseArgs():
     return args
 
 
-
 def count_multiples(bamfile, chrom):
     '''
     prelim count of aligments per read

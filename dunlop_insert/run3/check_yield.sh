@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 projdir=/mithril/Data/NGS/projects/dunlop_insert
@@ -164,5 +163,18 @@ if [ $1 == ins_plas ] ; then
 	    samtools view -@ 36 -b | \
 	    samtools sort -@ 36 -o $datadir/check/${i}_insplas.sorted.bam
 	samtools index $datadir/check/${i}_insplas.sorted.bam
+    done
+fi
+
+
+if [ $1 == count ] ; then
+    touch $datadir/run3_alignstates.csv
+    echo samp,unmapped,plas_only,ins_only,cre_only,ins_cre,ins_plas,cre_plas,multiple,recombined >> $datadir/run3_alignstates.csv
+    for i in NT278 NT279 NT296 NT297 NT298 NT299 ;
+    do
+	info=`python ~/Code/yfan_ngs/dunlop_insert/check_insert_runs.py \
+		            -b $datadir/check/${i}_insplas.sorted.bam`
+	
+	echo $i,$info >> $datadir/run3_alignstates.csv
     done
 fi
