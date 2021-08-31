@@ -92,7 +92,7 @@ class insertsinfo:
             
                 
 
-def find_inserts(bamfile):
+def find_inserts(bamfile, verbose):
     '''
     take alignment info and get info on the interfaces
     '''
@@ -103,6 +103,8 @@ def find_inserts(bamfile):
     for readrecord in bam.fetch():
         read_ids_all.append(readrecord.query_name)
     read_ids=set(read_ids_all)
+    if verbose:
+        print('number of total read names: ' + str(len(list(read_ids_all))))
     interfaces=[]
     for name in read_ids:
         readrecord=baminfo.find(name)    
@@ -111,10 +113,12 @@ def find_inserts(bamfile):
             interfaces.append(ins)
         if len(ins.r2_ins)==1 and len(ins.r2_cre)==1:
             interfaces.append(ins)
+    if verbose:
+        print('number of interfaces found: ' + str(len(interfaces)))
     return interfaces
 
 
-def filter_direction(interfaces):
+def filter_direction(interfaces, verbose):
     '''
     make sure that cre and ins are facing the same direction
     '''
@@ -126,6 +130,8 @@ def filter_direction(interfaces):
         if len(i.r2_ins)>0 and len(i.r2_cre)>0:
             if i.r2_ins[0][2]==i.r2_cre[0][2]:
                 cre_positions.append([i.readname, 'r2']+i.r2_cre[0]+i.r2_ins[0])
+    if verbose:
+        print('number of reads after drectional filter: ' + str(len(cre_positions)))
     return cre_positions
 
 
@@ -139,7 +145,7 @@ def fasta_dict(reffile):
     return fastadict
 
 
-def filter_cre(cre_positions, fastadict):
+def filter_cre(cre_positions, fastadict, verbose):
     '''
     filter down cre_positions
     report only one of the read pairs if they give the same info
@@ -150,10 +156,12 @@ def filter_cre(cre_positions, fastadict):
         if i[0] not in filt_cre:
             if i[7]==0 or i[8]==inslen:
                 filt_cre[i[0]]=i[1:]
+    if verbose:
+        print('number of reads after pair filtering: ' + str(len(filt_cre)))
     return filt_cre
 
 
-def correct_starts(filt_cre):
+def correct_starts(filt_cre, verbose):
     '''
     adjust cre positions if the alignment is ambiguous using reference
     check matches of arbitrary 10bp extended. Should be enough for uniqueness
@@ -171,6 +179,8 @@ def correct_starts(filt_cre):
             if adjust>0:
                 filt_cre[i][1]+=adjust
             newfiltcre[i]=filt_cre[i]
+    if verbose:
+        print('number of reads after end correction: ' + str(len(newfiltcre)))
     return newfiltcre
 
 
@@ -178,10 +188,10 @@ def correct_starts(filt_cre):
 def main():
     args=parseArgs()
     fastadict=fasta_dict(args.ref)
-    interfaces=find_inserts(args.bam)
-    cre_positions=filter_direction(interfaces)
-    filt_cre=filter_cre(cre_positions, fastadict)
-    filt_cre_corrected=correct_starts(filt_cre)
+    interfaces=find_inserts(args.bam, args.verbose)
+    cre_positions=filter_direction(interfaces, args.verbose)
+    filt_cre=filter_cre(cre_positions, fastadict, args.verbose)
+    filt_cre_corrected=correct_starts(filt_cre, args.verbose)
     with open(args.out, 'w') as f:
         for i in filt_cre_corrected:
             info=filt_cre_corrected[i]

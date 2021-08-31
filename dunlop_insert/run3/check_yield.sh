@@ -178,3 +178,14 @@ if [ $1 == count ] ; then
 	echo $i,$info >> $datadir/run3_alignstates.csv
     done
 fi
+
+
+if [ $1 == count_ecoli_chr ] ; then
+    touch $datadir/run3_ecoli_chr_counts.csv
+    for i in NT278 NT279 NT296 NT297 NT298 NT299 ;
+    do
+	bam=$datadir/check/${i}_bwa_ecoliplas.sorted.bam
+	numreads=`samtools view $bam | awk '$5==60 && $3=="NC_000913.3" {print $0}' | wc -l`
+	echo $i,$numreads >> $datadir/run3_ecoli_chr_counts.csv
+    done
+fi
