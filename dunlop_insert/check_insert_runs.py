@@ -30,7 +30,14 @@ def classify_read(r1info):
     uniquenames=list(set(r1info))
     if len(uniquenames)!=len(r1info):
         ##recombination
-        return 8
+        if len(uniquenames)==1 and uniquenames[0]=='plas':
+            return 8
+        elif len(uniquenames)==1 and uniquenames[0]=='cre':
+            return 9
+        elif len(uniquenames)==1 and uniquenames[0]=='ins' :
+            return 10
+        else:
+            return 11
     elif len(uniquenames)==1:
         if uniquenames[0]=='unmapped':
             return 0
@@ -64,12 +71,15 @@ class statesinfo:
         ins/cre - read had two alignments, insert and cre section of plasmid
         ins/plas - read had two alignments, insert and non-cre section of plasmid
         cre/plas - read had two separate alignments, one touched cre and the other was plasmid but did not touch cre
-        multiple - read had more than two separate alignments
-        recombined - read had separate alignments to the same chr
+        multiple - read aligned to three different chrs
+        plas_recomb - read had multiple separate alignments to plas only
+        cre_recomb - read had multiple separate alignments to cre only
+        ins_recomb - read had multiple separate alignments to insert only
+        other_recomb - read has multiple separate alignments to something, and aligned to another chr
         ##[unmapped, plas only, ins only, cre only, ins/cre, ins/plas, cre/plas, multiple, recombined]
         '''
-        self.r1_states=[0,0,0,0,0,0,0,0,0]
-        self.r2_states=[0,0,0,0,0,0,0,0,0]
+        self.r1_states=[0,0,0,0,0,0,0,0,0,0,0,0]
+        self.r2_states=[0,0,0,0,0,0,0,0,0,0,0,0]
         self.info=self.getstates(read_ids, baminfo, crerange)
     def getstates(self, read_ids, baminfo, crerange):
         for name in read_ids:
@@ -82,13 +92,15 @@ class statesinfo:
                 if read.is_read2:
                     r2info.append(get_readinfo(read, crerange))
             try:
+                state=classify_read(r1info)
                 self.r1_states[classify_read(r1info)]+=1
             except TypeError:
-                print(name)
+                print('weirdness for '+ name)
             try:
-                self.r2_states[classify_read(r2info)]+=1
+                state=classify_read(r2info)
+                self.r2_states[state]+=1
             except TypeError:
-                print(name)
+                print('weirdness for '+ name)
         return('done')
             
 
@@ -119,16 +131,12 @@ def check_plas():
     '''
     reffile1='/mithril/Data/NGS/projects/dunlop_insert/refs/construct1_plas.fa'
     reffile2='/mithril/Data/NGS/projects/dunlop_insert/refs/construct2_plas.fa'
-
     ref1=fasta_dict(reffile1)
     ref2=fasta_dict(reffile2)
-
     start1=ref1['PTKEI-DEST-CRE-LOXP-SFGFP'].find(ref1['CRE'])
     start2=ref2['PTKEI-DEST-CRE-LOXP-SFGFP'].find(ref2['CRE'])
-
     len1=len(ref1['CRE'])
     len2=len(ref2['CRE'])
-
     crerange=[start1,start1+len1]
     return crerange
     
