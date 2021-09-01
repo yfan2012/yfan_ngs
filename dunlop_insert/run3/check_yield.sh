@@ -189,3 +189,6 @@ if [ $1 == count_ecoli_chr ] ; then
 	echo $i,$numreads >> $datadir/run3_ecoli_chr_counts.csv
     done
 fi
+
+
+	

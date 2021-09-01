@@ -164,9 +164,16 @@ def main(reffile, pairedr1, pairedr2, unpairedr1, unpairedr2, outfile, threads, 
     pool=mp.Pool(threads)
     pool.starmap(scan_fastq, zip(fqinfo, repeat(posinfo), repeat(L), repeat(verbose)))
 
+    ##ensure unique
+    uniquesites={}
+    for i in L:
+        if i[0] not in uniquesites:
+            uniquesites[i[0]]=i[1:]
+    
     with open(outfile, 'w') as f:
-        for i in L:
-            f.write(','.join(i)+'\n')
+        for i in uniquesites:
+            uniqueinfo=[i]+uniquesites[i]
+            f.write(','.join(uniqueinfo)+'\n')
     pool.close()
     pool.join()
 
