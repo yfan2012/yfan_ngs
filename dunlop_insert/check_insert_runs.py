@@ -144,9 +144,11 @@ def main():
     args=parseArgs()
     crerange=check_plas()
     states=count_states(args.bamfile)
+    bamname=args.bamfile
+    shortname=bamname.split('/')[-1].split('.')[0]
     ##print('#unmapped,plas_only,ins_only,cre_only,ins_cre,ins_plas,cre_plas,multiple,recombined')
-    print(','.join([str(x) for x in states.r1_states]))
-    print(','.join([str(x) for x in states.r2_states]))
+    print(','.join([shortname+'_r1']+[str(x) for x in states.r1_states])+'\n')
+    print(','.join([shortname+'_r2']+[str(x) for x in states.r2_states])+'\n')
 
 if __name__ == "__main__":
     main()

@@ -130,3 +130,22 @@ if [ $1 == bowtie ] ; then
     done
 
 fi
+
+
+if [ $1 == yield ] ; then
+    for i in NT284 NT285 NT286 NT287 ;
+    do
+	bash ~/Code/utils/qc/basic_run_assess_zip.sh $rawdir/${i}*_L001_R1_001.fastq.gz >> $datadir/run2_info.csv
+	bash ~/Code/utils/qc/basic_run_assess_zip.sh $rawdir/${i}*_L001_R2_001.fastq.gz >> $datadir/run2_info.csv
+    done
+
+    for i in NT284 NT285 NT286 NT287 ;
+    do
+	bash ~/Code/utils/qc/basic_run_assess_zip.sh $datadir/trimmed/${i}_fwd_paired.fq.gz >> $datadir/run2_info.csv
+	bash ~/Code/utils/qc/basic_run_assess_zip.sh $datadir/trimmed/${i}_rev_paired.fq.gz >> $datadir/run2_info.csv
+    done
+
+    sed -i -e "s|$rawdir/||g" $datadir/run2_info.csv
+    sed -i -e "s|$datadir/trimmed/||g" $datadir/run2_info.csv
+
+fi
