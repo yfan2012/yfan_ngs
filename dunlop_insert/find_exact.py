@@ -56,6 +56,7 @@ def read_fastq(fastqfile):
     reads=list(zip(names, seqs))
     return reads
 
+
 def revcomp(seq):
     '''
     reverse complement a string
@@ -79,7 +80,7 @@ def make_seqs(fastadict, size):
     backins=fastadict['insert'][-size:]
     for i in range(0, len(fastadict['cre'])-size-size+1):
         frontcre=fastadict['cre'][i:i+size]
-        backcre=fastadict['cre'][i+size:i+size+size]
+        backcre=fastadict['cre'][i-5+size:i-5+size+size]
         frontfwd=frontcre+frontins
         backfwd=backins+backcre
         frontrev=revcomp(frontfwd)
