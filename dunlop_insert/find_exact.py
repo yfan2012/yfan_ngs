@@ -78,7 +78,6 @@ def make_seqs(fastadict, size):
     posinfo={}
     frontins=fastadict['insert'][0:size]
     backins=fastadict['insert'][-size:]
-    scars=['TGCGTCA', 'TGACGCA', 'TGATGCA', 'TGCATCA']
     for i in range(0, len(fastadict['cre'])-size-size+1):
         frontcre=fastadict['cre'][i:i+size]
         backcre=fastadict['cre'][i-5+size:i-5+size+size]
@@ -86,10 +85,8 @@ def make_seqs(fastadict, size):
         backfwd=backins+backcre
         frontrev=revcomp(frontfwd)
         backrev=revcomp(backfwd)
-        scarpos=[frontcre+x+backcre for x in scars]
-        scarposrev=[revcomp(x) for x in scarpos]
         pos=str(i+size)
-        posinfo[pos]=[frontfwd, frontrev, backfwd, backrev] + scarpos + scarposrev
+        posinfo[pos]=[frontfwd, frontrev, backfwd, backrev]
     return posinfo
 
 
@@ -125,12 +122,6 @@ def scan_for_insert(reads, posinfo, pair, verbose):
                 potentialsites.append([name, pos, 'end', 'fwd', pair])
             if seqs[3] in readseq:
                 potentialsites.append([name, pos, 'end', 'rev', pair])
-            if any(x in readseq for x in seqs[4:]):
-                matches=[x for x in seqs[4:] if x in readseq]
-                if len(matches)==1:
-                    potentialsites.append([name, pos, 'scar', matches[0], pair])
-                else:
-                    print('multiple scar matches for ' + name)
         if len(potentialsites)==1:
             insertsites.append(potentialsites[0])
         if verbose and len(potentialsites)>1:
