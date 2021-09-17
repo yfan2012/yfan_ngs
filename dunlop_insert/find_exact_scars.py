@@ -69,33 +69,39 @@ def revcomp(seq):
     return revbases
     
     
-def make_seqs(fastadict, size):
+def make_scar_flanks(fastadict, size):
     '''
-    figure out which sequences to look for from reference
+    figure out what scar sequences to look for at each position
     size is how many bases per side - so size 6 results in a 12mer
-    return dict like posinfo[pos]=[seq1, seq2, seq3, seq4]
     '''
-    posinfo={}
-    frontins=fastadict['insert'][0:size]
-    backins=fastadict['insert'][-size:]
-    scars=['TGCGTCA', 'TGACGCA', 'TGATGCA', 'TGCATCA']
+    scarpos={}
     for i in range(0, len(fastadict['cre'])-size-size+1):
         frontcre=fastadict['cre'][i:i+size]
         backcre=fastadict['cre'][i-5+size:i-5+size+size]
-        frontfwd=frontcre+frontins
-        backfwd=backins+backcre
-        frontrev=revcomp(frontfwd)
-        backrev=revcomp(backfwd)
-        scarpos=[frontcre+x+backcre for x in scars]
-        scarposrev=[revcomp(x) for x in scarpos]
         pos=str(i+size)
-        posinfo[pos]=[frontfwd, frontrev, backfwd, backrev] + scarpos + scarposrev
-    return posinfo
+        scarpos[pos]=[frontcre, backcre]
+    return scarpos
 
 
-def scan_for_insert(reads, posinfo, pair, verbose):
+def get_scar_seq(readseq, scarstart, scarend):
     '''
-    scan through a read for evidence of insert
+    given read seqeunce, and the scar starts and ends
+    return the full scar sequence
+    '''
+    edge1=readseq.index(scarstart)
+    edge2=readseq.index(scarend)
+    if edge1+len(scarstart)<edge2:
+        scarseq=readseq[edge1+len(scarstart):edge2]
+        fullscarseq=readseq[edge1:edge2+len(scarend)]
+        scarinfo=[scarseq, fullscarseq]
+    else:
+        scarinfo=[]
+    return scarinfo
+                        
+
+def scan_for_scars(reads, scarpos, fastadict, pair, verbose):
+    '''
+    scan through a read for evidence of scar
     takes list [readname, seq]
     takes dict {pos:[frontfwd, frontrev, ...]}
     returns list of lists [name, pos, insert_end, orient, readpair]
@@ -106,6 +112,9 @@ def scan_for_insert(reads, posinfo, pair, verbose):
     dups=0
     count=0
     start_time=time.time()
+    frontins=fastadict['insert'][0:15]
+    backins=fastadict['insert'][-15:]
+    insseqs=[frontins, backins, revcomp(frontins), revcomp(backins)]
     for i in reads:
         if verbose:
             count+=1
@@ -115,33 +124,40 @@ def scan_for_insert(reads, posinfo, pair, verbose):
         name=i[0].split(' ')[0][1:]
         readseq=i[1]
         potentialsites=[]
-        for pos in posinfo:
-            seqs=posinfo[pos]
-            if seqs[0] in readseq:
-                potentialsites.append([name, pos, 'start', 'fwd', pair])
-            if seqs[1] in readseq:
-                potentialsites.append([name, pos, 'start', 'rev', pair])
-            if seqs[2] in readseq:
-                potentialsites.append([name, pos, 'end', 'fwd', pair])
-            if seqs[3] in readseq:
-                potentialsites.append([name, pos, 'end', 'rev', pair])
-            if any(x in readseq for x in seqs[4:]):
-                matches=[x for x in seqs[4:] if x in readseq]
-                if len(matches)==1:
-                    potentialsites.append([name, pos, 'scar', matches[0], pair])
-                else:
-                    print('multiple scar matches for ' + name)
+        for pos in scarpos:
+            seqs=scarpos[pos]+[revcomp(x) for x in scarpos[pos]]
+            if any(x in readseq for x in seqs): ##hit on one of the potential scar sequences
+                if not any(x in readseq for x in insseqs): ##no insert hit
+                    if seqs[0] in readseq and seqs[1] in readseq:
+                        scarinfo=get_scar_seq(readseq, seqs[0], seqs[1])
+                        if len(scarinfo)>1:
+                            potentialsites.append([name, pos, scarinfo[0], scarinfo[1], pair])
+                    elif seqs[2] in readseq and seqs[3] in readseq:
+                        scarinfo=get_scar_seq(readseq, seqs[2], seqs[3])
+                        if len(scarinfo)>1:
+                            potentialsites.append([name, pos, scarinfo[0], scarinfo[1], pair])
+        added=False
         if len(potentialsites)==1:
             insertsites.append(potentialsites[0])
-        if verbose and len(potentialsites)>1:
-            dups+=1
-            print(potentialsites)
+            added=True
+        elif len(potentialsites)>1:
+            for site in potentialsites:
+                if site[2].startswith('TG') and site[2].endswith('CA'):
+                    insertsites.append(site)
+                    added=True
+        if len(potentialsites)>1 and not added:
+            if verbose:
+                for site in potentialsites:
+                    site[4]='multi'
+                    insertsites.append(site)
+                    dups+=1
+                    print(potentialsites)
     if verbose:
         print(str(dups)+' reads supported more than one insert site')
     return insertsites
                 
     
-def scan_fastq(fqinfo, posinfo, L, verbose):
+def scan_fastq(fqinfo, scarpos, fastadict, L, verbose):
     '''
     run through process of scanning a fastq
     adds insertsites to manager list
@@ -150,7 +166,7 @@ def scan_fastq(fqinfo, posinfo, L, verbose):
     fastqfile=fqinfo[0]
     pair=fqinfo[1]
     reads=read_fastq(fastqfile)    
-    insertsites=scan_for_insert(reads, posinfo, pair, verbose)
+    insertsites=scan_for_scars(reads, scarpos, fastadict, pair, verbose)
     L+=insertsites
 
 
@@ -161,7 +177,7 @@ def scan_fastq(fqinfo, posinfo, L, verbose):
 
 def main(reffile, pairedr1, pairedr2, unpairedr1, unpairedr2, outfile, threads, verbose):
     fastadict=fasta_dict(reffile)    
-    posinfo=make_seqs(fastadict, 10)
+    scarpos=make_scar_flanks(fastadict, 12)
 
     fqinfo=[[pairedr1, 'r1'], [pairedr2, 'r2']]
     if unpairedr1 is not None:
@@ -172,7 +188,7 @@ def main(reffile, pairedr1, pairedr2, unpairedr1, unpairedr2, outfile, threads, 
     manager=mp.Manager()
     L=manager.list()
     pool=mp.Pool(threads)
-    pool.starmap(scan_fastq, zip(fqinfo, repeat(posinfo), repeat(L), repeat(verbose)))
+    pool.starmap(scan_fastq, zip(fqinfo, repeat(scarpos), repeat(fastadict),  repeat(L), repeat(verbose)))
 
     ##ensure unique
     uniquesites={}

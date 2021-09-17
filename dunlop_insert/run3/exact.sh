@@ -18,6 +18,20 @@ if [ $1 == test ] ; then
 	   -t 4
 fi
 
+if [ $1 == test_scars ] ; then
+    mkdir -p $datadir/exact
+    i=NT296
+    python ~/Code/yfan_ngs/dunlop_insert/find_exact_scars.py \
+	   -1 $datadir/trimmed/${i}_fwd_paired.fq.gz \
+	   -2 $datadir/trimmed/${i}_rev_paired.fq.gz \
+	   -3 $datadir/trimmed/${i}_fwd_unpaired.fq.gz \
+	   -4 $datadir/trimmed/${i}_rev_unpaired.fq.gz \
+	   -r $projdir/refs/construct1.fa \
+	   -o $datadir/exact/test.scars.csv \
+	   -t 4
+fi
+
+
 if [ $1 == findmag ] ; then
     mkdir -p $datadir/exact
 
