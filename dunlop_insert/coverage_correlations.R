@@ -34,10 +34,23 @@ corr_sample <- function(posdata){
     return(cors)
 }
 
+corr_sample_sum <- function(posdata) {
+    cors=NULL
+    corrdata=posdata %>%
+        mutate(area=x+y) %>%
+        arrange(-area)
+    for (i in 1:dim(corrdata)[1]) {
+        plotdata=corrdata[i:dim(corrdata)[1],]
+        p=cor(plotdata$x, plotdata$y)
+        cors=bind_rows(cors, tibble(rank=i, cor=p))
+    }
+    return(cors)
+}
     
 plots=c()
 rankplots=c()
 corplots=c()
+sumcorplots=c()
 for (i in 1:dim(combs)[2]){
     xstrain=combs[1,i]
     ystrain=combs[2,i]
@@ -87,6 +100,16 @@ for (i in 1:dim(combs)[2]){
         ggtitle(paste0(xstrain, ' vs ', ystrain)) +
         theme_bw()
     corplots[[i]]=corplot
+
+    sumcors=corr_sample_sum(posdata)
+    sumcorplot=ggplot(sumcors, aes(x=rank, y=cor)) +
+        geom_point(alpha=.5, size=.1) +
+        xlab('Number of top points missing') +
+        ylab('Pearson coefficient') +
+        ggtitle(paste0(xstrain, ' vs ', ystrain)) +
+        theme_bw()
+    sumcorplots[[i]]=sumcorplot
+
 }
 
 
@@ -103,4 +126,9 @@ dev.off()
 corrplotfile=file.path(dbxdir, 'naivelib_corrplot.pdf')
 pdf(corrplotfile, h=8, w=15)
 print(plot_grid(corplots[[1]], corplots[[2]], corplots[[3]], corplots[[4]], corplots[[5]], corplots[[6]], ncol=3, align='v'))
+dev.off()
+
+corrplotfile=file.path(dbxdir, 'naivelib_sumcorrplot.pdf')
+pdf(corrplotfile, h=8, w=15)
+print(plot_grid(sumcorplots[[1]], sumcorplots[[2]], sumcorplots[[3]], sumcorplots[[4]], sumcorplots[[5]], sumcorplots[[6]], ncol=3, align='v'))
 dev.off()
