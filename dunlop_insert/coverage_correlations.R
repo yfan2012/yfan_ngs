@@ -46,11 +46,27 @@ corr_sample_sum <- function(posdata) {
     }
     return(cors)
 }
+
+corr_sample_rank <- function(rankdata) {
+    ##get pvals as you take away the highest ranked data
+    cors=NULL
+    corrdata=rankdata %>%
+        mutate(area=xrank*yrank) %>%
+        arrange(area)
+    for (i in 1:dim(corrdata)[1]) {
+        plotdata=corrdata[i:dim(corrdata)[1],]
+        p=cor(plotdata$xrank, plotdata$yrank, method='spearman')
+        cors=bind_rows(cors, tibble(rank=i, cor=p))
+    }
+    return(cors)
+}
+
     
 plots=c()
 rankplots=c()
 corplots=c()
 sumcorplots=c()
+rankcorrplots=c()
 for (i in 1:dim(combs)[2]){
     xstrain=combs[1,i]
     ystrain=combs[2,i]
@@ -110,6 +126,14 @@ for (i in 1:dim(combs)[2]){
         theme_bw()
     sumcorplots[[i]]=sumcorplot
 
+    rankcors=corr_sample_rank(rankdata)
+    rankcorrplot=ggplot(rankcors, aes(x=rank, y=cor)) +
+        geom_point(alpha=.5, size=.1) +
+        xlab('Points missing') +
+        ylab('Spearman coefficient') +
+        ggtitle(paste0(xstrain, ' vs ', ystrain)) +
+        theme_bw()
+    rankcorrplots[[i]]=rankcorrplot
 }
 
 
@@ -131,4 +155,9 @@ dev.off()
 corrplotfile=file.path(dbxdir, 'naivelib_sumcorrplot.pdf')
 pdf(corrplotfile, h=8, w=15)
 print(plot_grid(sumcorplots[[1]], sumcorplots[[2]], sumcorplots[[3]], sumcorplots[[4]], sumcorplots[[5]], sumcorplots[[6]], ncol=3, align='v'))
+dev.off()
+
+corrplotfile=file.path(dbxdir, 'naivelib_rankcorrplot.pdf')
+pdf(corrplotfile, h=8, w=15)
+print(plot_grid(rankcorrplots[[1]], rankcorrplots[[2]], rankcorrplots[[3]], rankcorrplots[[4]], rankcorrplots[[5]], rankcorrplots[[6]], ncol=3, align='v'))
 dev.off()
