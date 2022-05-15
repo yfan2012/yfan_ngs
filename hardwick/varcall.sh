@@ -111,3 +111,23 @@ if [ $1 == bedslice ] ; then
 fi
 
 	
+if [ $1 == get_consensus_seq ] ; then
+    mkdir -p $datadir/varfasta
+    for i in 178 197 1694 6341 ;
+    do
+	bgzip -c $datadir/vars/$i.vcf > $datadir/varfasta/$i.vcf.gz
+	tabix -p vcf $datadir/varfasta/$i.vcf.gz
+	cat $ref | vcf-consensus $datadir/varfasta/$i.vcf.gz > $datadir/varfasta/$i.fasta
+    done
+fi
+
+
+dbxdir=~/gdrive/hardwick
+if [ $1 == parsnp_consensus ] ; then
+    mkdir -p $datadir/parsnp
+    for i in 178 197 1694 6341 ;
+    do
+	cp $datadir/varfasta/$i.fasta $datadir/parsnp
+    done
+    parsnp -r $ref -d $datadir/parsnp -p 12 -o $dbxdir/consensus_parsnp
+fi

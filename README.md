@@ -1,6 +1,7 @@
 # yfan_ngs
 NGS analysis for:
 
+courtney_skin - single cell seq of skin punchout sample  
 Nathan - optogenetically activated split protein screen  
 Dunlop - single cell bacterial RNA seq (now moved to its own repo)  
 Hardwick - fungal genome assembly/variant calling  
