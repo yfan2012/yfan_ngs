@@ -1,5 +1,7 @@
 #!/bin/bash
 
+dbxdir=~/gdrive/courtney_skin
+
 index=SI-TT-A10
 samp=human_skin
 run=220307_NrlSkin
@@ -32,6 +34,8 @@ if [ $1 == builddb ] ; then
 fi
 
 
+
+
 ##cellranger pipeline - not sure what the point of mkfastq is - let's try with and without
 if [ $1 == sampsheet ] ; then
     ##make sample sheet
@@ -57,3 +61,23 @@ if [ $1 == count ] ; then
 	       --transcriptome=$ref
     mv ./count/ $datadir/
 fi
+
+if [ $1 == countold ] ; then
+    ##moved illumina basecalled files to outer most rawdir
+    cellranger count \
+	       --id=countold \
+	       --fastqs=$datadir/raw \
+	       --transcriptome=$ref
+    mv ./countold/ $datadir/
+fi
+
+
+##Check qual
+if [ $1 == fastqc ] ; then
+    mkdir -p $dbxdir/fastqc
+    fastqc $datadir/mkfastq/outs/fastq_path/Undetermined_S0_L001_R2_001.fastq.gz \
+	   --outdir=$dbxdir/fastqc \
+	   --extract
+fi
+
+    
