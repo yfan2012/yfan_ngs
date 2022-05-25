@@ -1,6 +1,7 @@
 library(Matrix)
 library(tidyverse)
 
+
 dbxdir='~/gdrive/cho'
 rawdir='/atium/Data/projects/ambic_cho/220519_cho_igg/g1ks'
 mitodir='/atium/Data/projects/ambic_cho/220503_alice_cho_sc/cho_k1gshd_analysis/'
@@ -75,7 +76,7 @@ filter.cells <- function(mat, mitogenes, gene.cut, mito.cut) {
 
     keepcells=keeppmpc[names(keeppmpc) %in% names(keepgpc)]
 
-    filtmat=mat[, keepcells]
+    filtmat=mat[, names(keepcells)]
     return(filtmat)
 }
 
@@ -85,6 +86,50 @@ mito.cut=.1
 filt0=filter.cells(mat0, mitogenes, gene.cut, mito.cut)
 filt9=filter.cells(mat9, mitogenes, gene.cut, mito.cut)
 
+normalize.counts.old <- function(mat, scalefactor) {
+    ##normalize counts across cells
+    tpc=tscripts.per.cell(mat)
+    ivec=c()
+    j=c()
+    x=c()
+    ##takes ~20s per 100 cells - might come back and parallel this
+    for (i in 0:length(tpc)-1) {
+        cellindex=which(mat@j==i)
+        genecounts=mat@x[cellindex]
+        normgenecounts=genecounts*scalefactor/tpc[i+1]
+        x=c(x, normgenecounts)
+        j=c(j, mat@j[cellindex])
+        ivec=c(ivec, mat@i[cellindex])
+        if (i %% 100 == 0 ) {
+            print(i)
+        }
+    }
+
+    norm=sparseMatrix(i=ivec, j=j, x=x, dims=c(20825, 4950), repr='T')
+    
+}
+
+normalize.counts <- function(mat, scalefactor) {
+    ##normalize counts across cells
+    matdf=tibble(i=mat@i, j=mat@j, x=mat@x) %>%
+        group_by(j) %>%
+        summarise(i=i, norm=x*scalefactor/sum(x))
+
+    norm=sparseMatrix(i=matdf$i+1, j=matdf$j+1, x=matdf$norm, dims=dim(mat), repr='T')
+    rownames(norm)=rownames(mat)
+    colnames(norm)=colnames(mat)
+    return(norm)
+}
+
+
+scalefactor=10000
+norm0=normalize.counts(filt0, scalefactor)
+norm9=normalize.counts(filt9, scalefactor)
+
+igg=rbind(tibble(expr=norm0['igg_hc',], cond='0', samp='hc'),
+          tibble(expr=norm0['igg_lc',], cond='0', samp='lc'),
+          tibble(expr=norm9['igg_hc',], cond='9', samp='hc'),
+          tibble(expr=norm9['igg_lc',], cond='9', samp='lc'))
 
 
 ####plotting
@@ -97,7 +142,6 @@ percell9=tibble(gpc=genes.per.cell(mat90),
                 pmpc=mito.per.cell(mat90, mitogenes),
                 label='day90')
 percell=bind_rows(percell0, percell9)
-
 
 controlplotspdf=file.path(dbxdir, 'controlplots.pdf')
 pdf(controlplotspdf, h=8, w=11)
@@ -128,6 +172,17 @@ plot(mtplot)
 dev.off()
 
 
+iggplotspdf=file.path(dbxdir, 'igg_dists.pdf')
+pdf(iggplotspdf, h=8, w=13)
+iggplot=ggplot(igg, aes(x=samp, y=expr, colour=cond, fill=cond, alpha=.2)) +
+    geom_violin(alpha = 0.5) +
+    ##geom_jitter(position = position_jitter(seed = 1, width = 0.2), size=.3) +
+    scale_colour_brewer(palette='Set2') +
+    scale_fill_brewer(palette='Set2') +
+    ggtitle('genes per cell') +
+    theme_bw()
+print(iggplot)
+dev.off()
 
 
 
