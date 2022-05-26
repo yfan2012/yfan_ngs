@@ -1,5 +1,6 @@
 library(Matrix)
 library(tidyverse)
+library(qlcMatrix)
 
 
 dbxdir='~/gdrive/cho'
@@ -126,11 +127,98 @@ scalefactor=10000
 norm0=normalize.counts(filt0, scalefactor)
 norm9=normalize.counts(filt9, scalefactor)
 
-igg=rbind(tibble(expr=norm0['igg_hc',], cond='0', samp='hc'),
-          tibble(expr=norm0['igg_lc',], cond='0', samp='lc'),
-          tibble(expr=norm9['igg_hc',], cond='9', samp='hc'),
-          tibble(expr=norm9['igg_lc',], cond='9', samp='lc'))
+goi=rbind(tibble(expr=norm0['igg_hc',], cond='0', gene='igg_hc'),
+          tibble(expr=norm0['igg_lc',], cond='0', gene='igg_lc'),
+          tibble(expr=norm9['igg_hc',], cond='9', gene='igg_hc'),
+          tibble(expr=norm9['igg_lc',], cond='9', gene='igg_lc'),
+          tibble(expr=norm0['Actb',], cond='0', gene='Actb'),
+          tibble(expr=norm9['Actb',], cond='9', gene='Actb'),
+          tibble(expr=norm0['Gss',], cond='0', gene='Gss'),
+          tibble(expr=norm9['Gss',], cond='9', gene='Gss')) %>%
+    group_by(gene) %>%
+    summarise(normexpr=expr/max(expr), cond=cond)
 
+
+gene.correlation.old <- function(gene, mat) {
+    ##calculates correlation between gene and all other genes
+    ##this is too slow
+    library(foreach)
+    library(plyr)
+    library(doParallel)
+    cl=makeCluster(5)
+    registerDoParallel(cl, cores=5)
+    exprgene=mat[gene,]
+    
+    corrdf=foreach(i=1:dim(mat)[1], .combine=rbind) %dopar% {
+        print(i)
+        g2=mat[i,]
+        coeff=cor(exprgene, g2, method='spearman')
+        genename=rownames(mat)[i]
+        return(data.frame(gene=genename, corr=coeff))
+    }
+
+    stopCluster(cl)
+    rm(cl)
+    return(coeff)
+}
+
+
+##taken from https://saket-choudhary.me/blog/2022/03/10/fast-sparsespearman/
+SparsifiedRanks2 <- function(X) {
+    if (class(X)[1] != "dgCMatrix") {
+        X <- as(object = X, Class = "dgCMatrix")
+    }
+    non_zeros_per_col <- diff(x = X@p)
+    n_zeros_per_col <- nrow(x = X) - non_zeros_per_col
+    offsets <- (n_zeros_per_col - 1) / 2
+    x <- X@x
+    ## split entries to columns
+    col_lst <- split(x = x, f = rep.int(1:ncol(X), non_zeros_per_col))
+    ## calculate sparsified ranks and do shifting
+    sparsified_ranks <- unlist(x = lapply(X = seq_along(col_lst),
+                                          FUN = function(i) rank(x = col_lst[[i]]) + offsets[i]))
+    ## Create template rank matrix
+    X.ranks <- X
+    X.ranks@x <- sparsified_ranks
+    return(X.ranks)
+}
+
+SparseSpearmanCor2 <- function(X, Y = NULL, cov = FALSE) {
+    ## Get sparsified ranks
+    rankX <- SparsifiedRanks2(X)
+    if (is.null(Y)){
+        ## Calculate pearson correlation on rank matrices
+        return (corSparse(X=rankX, cov=cov))
+    }
+    rankY <- SparsifiedRanks2(Y)
+    return(corSparse( X = rankX, Y = rankY, cov = cov))
+}
+
+corr0=SparseSpearmanCor2(t(norm0))
+corr9=SparseSpearmanCor2(t(norm9))
+rownames(corr0)=rownames(norm0)
+colnames(corr0)=rownames(norm0)
+rownames(corr9)=rownames(norm9)
+colnames(corr9)=rownames(norm9)
+
+grab.gene.corr <- function(name, corrmat, samp) {
+    genecorr=tibble(corr=corrmat[,name], gene=rownames(corrmat)) %>%
+        filter(!is.na(corr)) %>%
+        arrange(desc(corr)) %>%
+        mutate(order=rank(desc(corr))) %>%
+        mutate(name=name) %>%
+        mutate(samp=samp)
+    return(genecorr)
+}
+
+plotcorrdata=rbind(grab.gene.corr('igg_hc', corr0, 'day0'),
+                   grab.gene.corr('igg_hc', corr9, 'day9'),
+                   grab.gene.corr('igg_lc', corr0, 'day0'),
+                   grab.gene.corr('igg_lc', corr9, 'day9'),
+                   grab.gene.corr('Gss', corr0, 'day0'),
+                   grab.gene.corr('Gss', corr9, 'day9'),
+                   grab.gene.corr('Actb', corr0, 'day0'),
+                   grab.gene.corr('Actb', corr9, 'day9'))
 
 ####plotting
 percell0=tibble(gpc=genes.per.cell(mat0), 
@@ -142,6 +230,8 @@ percell9=tibble(gpc=genes.per.cell(mat90),
                 pmpc=mito.per.cell(mat90, mitogenes),
                 label='day90')
 percell=bind_rows(percell0, percell9)
+
+
 
 controlplotspdf=file.path(dbxdir, 'controlplots.pdf')
 pdf(controlplotspdf, h=8, w=11)
@@ -172,9 +262,9 @@ plot(mtplot)
 dev.off()
 
 
-iggplotspdf=file.path(dbxdir, 'igg_dists.pdf')
+iggplotspdf=file.path(dbxdir, 'goi_dists.pdf')
 pdf(iggplotspdf, h=8, w=13)
-iggplot=ggplot(igg, aes(x=samp, y=expr, colour=cond, fill=cond, alpha=.2)) +
+iggplot=ggplot(goi, aes(x=gene, y=normexpr, colour=cond, fill=cond, alpha=.2)) +
     geom_violin(alpha = 0.5) +
     ##geom_jitter(position = position_jitter(seed = 1, width = 0.2), size=.3) +
     scale_colour_brewer(palette='Set2') +
@@ -185,6 +275,13 @@ print(iggplot)
 dev.off()
 
 
-
-
+corrplotspdf=file.path(dbxdir, 'corr_plot.pdf')
+pdf(corrplotspdf, h=8, w=13)
+corrplot=ggplot(plotcorrdata, aes(x=order, y=corr)) +
+    geom_point(alpha=.4, size=.6) +
+    facet_grid(samp ~ name) +
+    scale_colour_brewer(palette='Set2') +
+    theme_bw()
+plot(corrplot)
+dev.off()
 
