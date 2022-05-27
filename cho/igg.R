@@ -11,9 +11,6 @@ matrix0dir=file.path(rawdir, 'CHO_day0/outs/filtered_feature_bc_matrix')
 matrix9dir=file.path(rawdir, 'CHO_day90/outs/filtered_feature_bc_matrix')
 
 
-testdir='/atium/Data/projects/ambic_cho_yfan/cellranger'
-##matrix0dir=file.path(testdir, 'CHO_day0_count/outs/filtered_feature_bc_matrix')
-##matrix90dir=file.path(testdir, 'CHO_day90_count/outs/filtered_feature_bc_matrix')
 
 ##check out the matrix first
 ##stolen from https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/output/matrices#r-load-mat
@@ -285,3 +282,42 @@ corrplot=ggplot(plotcorrdata, aes(x=order, y=corr)) +
 plot(corrplot)
 dev.off()
 
+
+
+
+##Glul is missing from alice's run? try this as sanity check
+testdir='/atium/Data/projects/ambic_cho_yfan/cellranger'
+ymatrix0dir=file.path(testdir, 'CHO_day0_count/outs/filtered_feature_bc_matrix')
+ymatrix9dir=file.path(testdir, 'CHO_day90_count/outs/filtered_feature_bc_matrix')
+
+ymat0=loadmats(ymatrix0dir)
+ymat9=loadmats(ymatrix9dir)
+
+yfilt0=filter.cells(ymat0, mitogenes, gene.cut, mito.cut)
+yfilt9=filter.cells(ymat9, mitogenes, gene.cut, mito.cut)
+
+ynorm0=normalize.counts(yfilt0, scalefactor)
+ynorm9=normalize.counts(yfilt9, scalefactor)
+
+ygoi=rbind(tibble(expr=ynorm0['igg_hc',], cond='0', gene='igg_hc'),
+          tibble(expr=ynorm0['igg_lc',], cond='0', gene='igg_lc'),
+          tibble(expr=ynorm9['igg_hc',], cond='9', gene='igg_hc'),
+          tibble(expr=ynorm9['igg_lc',], cond='9', gene='igg_lc'),
+          tibble(expr=ynorm0['Actb',], cond='0', gene='Actb'),
+          tibble(expr=ynorm9['Actb',], cond='9', gene='Actb'),
+          tibble(expr=ynorm0['Glul',], cond='0', gene='Glul'),
+          tibble(expr=ynorm9['Glul',], cond='9', gene='Glul')) %>%
+    group_by(gene) %>%
+    summarise(normexpr=expr/max(expr), cond=cond)
+
+yiggplotspdf=file.path(dbxdir, 'ygoi_dists.pdf')
+pdf(yiggplotspdf, h=8, w=13)
+iggplot=ggplot(ygoi, aes(x=gene, y=normexpr, colour=cond, fill=cond, alpha=.2)) +
+    geom_violin(alpha = 0.5) +
+    ##geom_jitter(position = position_jitter(seed = 1, width = 0.2), size=.3) +
+    scale_colour_brewer(palette='Set2') +
+    scale_fill_brewer(palette='Set2') +
+    ggtitle('genes per cell') +
+    theme_bw()
+print(iggplot)
+dev.off()
