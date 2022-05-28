@@ -62,7 +62,11 @@ plot=ggplot(allcells, aes(x=c1, y=c2, size=l, colour=samp, alpha=rec))+
     labs(title = "Frame: {frame_time}")
 
 animpath=file.path(dbxdir, 'test.gif')
-future::plan("multiprocess", workers = 36L)
-anim_save(animpath, plot, nframes=500, fps=10, renderer=gifski_renderer())
 
-                                              
+
+##https://stackoverflow.com/questions/67321487/how-to-use-multiple-cores-to-make-gganimate-faster
+##https://stackoverflow.com/questions/1474081/how-do-i-install-an-r-package-from-source
+library('gganimateparallel')
+future::plan("multiprocess", workers = 36L)
+anim_save(animpath, plot, nframes=1000, fps=8, renderer=gifski_renderer())
+
