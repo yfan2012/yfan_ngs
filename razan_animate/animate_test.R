@@ -54,19 +54,29 @@ allcells=bind_rows(livepercell, deadpercell)
 plot=ggplot(allcells, aes(x=c1, y=c2, size=l, colour=samp, alpha=rec))+
     geom_point() +
     scale_colour_brewer(palette='Set2') +
-    scale_y_log10() +
-    scale_x_log10() +
+    ##scale_y_log10() +
+    ##scale_x_log10() +
     scale_alpha_continuous(range = c(.15, 0.6)) +
+    theme(legend.position="none") +
     labs(x = "Color1", y = "Color2") +
     transition_time(time) +
     labs(title = "Frame: {frame_time}")
-
-animpath=file.path(dbxdir, 'test.gif')
-
 
 ##https://stackoverflow.com/questions/67321487/how-to-use-multiple-cores-to-make-gganimate-faster
 ##https://stackoverflow.com/questions/1474081/how-do-i-install-an-r-package-from-source
 library('gganimateparallel')
 future::plan("multiprocess", workers = 36L)
-anim_save(animpath, plot, nframes=1000, fps=8, renderer=gifski_renderer())
+##anim_save(animpath, plot, nframes=1000, fps=8, renderer=gifski_renderer())
 
+##anim_save(file.path(dbxdir, 'test_3000.gif'), plot, nframes=3000, fps=8, renderer=gifski_renderer())
+
+
+library(av)
+a=animate(plot, duration=40,
+          fps=50,
+          height=5,
+          width=6,
+          units="in",
+          res=200,
+          renderer=av_renderer())
+anim_save(file.path(dbxdir, 'test.mp4'), a)
