@@ -49,7 +49,7 @@ sep.colors <- function(celldata, tf, status) {
 #deadpercell=per.cell.data(deaddata[,1:512], deaddata[,513:1024], deaddata[1025:1536], 'dead')
 
 
-make_movie <- function(livepercell, deadpercell, animpath) {
+make_movie <- function(livepercell, deadpercell) {
     allcells=bind_rows(livepercell, deadpercell)
     
     plot=ggplot(allcells, aes(x=c1, y=c2, size=l, colour=samp, alpha=rec))+
@@ -73,6 +73,7 @@ make_movie <- function(livepercell, deadpercell, animpath) {
               units="in",
               res=200,
               renderer=av_renderer())
-    anim_save(animpath, a)
+    return(a)
+    ##anim_save(animpath, a)
 }
 
