@@ -40,7 +40,7 @@ per.cell.data <- function(color1, color2, len, samp) {
 
 sep.colors <- function(celldata, tf, status) {
     ##tf is total frames
-    sepdata=per.cell.data(celldata[,1:tf], celldata[,tf+1:tf+tf], celldata[,tf+tf+1:tf+tf+tf], status)
+    sepdata=per.cell.data(celldata[,1:tf], celldata[,tf+1:tf+tf], celldata[,(tf+tf+1):(tf+tf+tf)], status)
     return(sepdata)
 }
     
@@ -49,7 +49,7 @@ sep.colors <- function(celldata, tf, status) {
 #deadpercell=per.cell.data(deaddata[,1:512], deaddata[,513:1024], deaddata[1025:1536], 'dead')
 
 
-make_movie <- function(livepercell, deadpercell) {
+make.movie <- function(livepercell, deadpercell) {
     allcells=bind_rows(livepercell, deadpercell)
     
     plot=ggplot(allcells, aes(x=c1, y=c2, size=l, colour=samp, alpha=rec))+
@@ -75,5 +75,45 @@ make_movie <- function(livepercell, deadpercell) {
               renderer=av_renderer())
     return(a)
     ##anim_save(animpath, a)
+
+
 }
 
+
+make.plot <- function(livepercell, deadpercell) {
+    allcells=bind_rows(livepercell, deadpercell)
+    
+    plot=ggplot(allcells, aes(x=c1, y=c2, size=l, colour=samp, alpha=rec))+
+        geom_point() +
+        scale_colour_brewer(palette='Set2') +
+        ##scale_y_log10() +
+        ##scale_x_log10() +
+        scale_alpha_continuous(range = c(.15, 0.6)) +
+        theme(legend.position="none") +
+        labs(x = "Color1", y = "Color2") +
+        transition_time(time) +
+        labs(title = "Frame: {frame_time}")
+    
+    return(plot)
+    ##anim_save(animpath, a)
+}
+
+all.steps.plot <- function(livecsv, deadcsv, numframes) {
+    deaddata=read_csv(deadcsv, col_names=F)
+    livedata=read_csv(livecsv, col_names=F)
+    deadpercell=sep.colors(deaddata, numframes, 'dead')
+    livepercell=sep.colors(livedata, numframes, 'live')
+    plot=make.plot(livepercell, deadpercell)
+    return(plot)
+}
+
+
+all.steps.movie <- function(livecsv, deadcsv, numframes) {
+    deaddata=read_csv(deadcsv, col_names=F)
+    livedata=read_csv(livecsv, col_names=F)
+    deadpercell=sep.colors(deaddata, numframes, 'dead')
+    livepercell=sep.colors(livedata, numframes, 'live')
+    a=make.movie(livepercell, deadpercell)
+    return(a)
+}
+    

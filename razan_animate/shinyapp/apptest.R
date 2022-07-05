@@ -49,7 +49,7 @@ ui <- fluidPage(
         'Hello world',
         tags$hr(),
         ##tags$video(id="videoID", type = "video/mp4",src = "output.mp4", controls = "controls")
-        imageOutput("plot1"),
+        imageOutput("vid"),
         tags$hr(),
         downloadButton("download", "Download .mp4")
         
@@ -59,35 +59,19 @@ ui <- fluidPage(
 )
 
 
+
 server <- function(input, output, session) {
-    deaddata=read_csv(input$dead$datapath, col_names=F)
-    livedata=read_csv(input$live$datapath, col_names=F)
-    
-    deadpercell=sep.colors(deaddata, input$totframes, 'dead')
-    livepercell=sep.colors(livedata, input$totframes, 'live')
-    
-    a=make_movie(livepercell, deadpercell)
+    a=reactive(all.steps(input$live$datapath, input$dead$datapath, input$totframes))
 
     output$vid <- renderUI({
-    
         anim_save("outfile.mp4", a)
-        list(src = "outfile.mp4",
-             contentType = 'image/gif'
-             )}, deleteFile = TRUE)
+        list(src = "outfile.mp4"
+             )})
 }
 
+    
 shinyApp(ui, server)
 
 
 
 
-
-    
-    output$download <- downloadHandler(
-        filename = function() {
-            paste0(, ".mp4")
-        },
-        content = function(file) {
-            write.csv(data(), file)
-        }
-    )
